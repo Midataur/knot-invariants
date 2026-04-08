@@ -72,7 +72,7 @@ def train(config):
         # start a new wandb run to track this script
         wandb.init(
             # set the wandb project where this run will be logged
-            project="dynnikov",
+            project=config["wandb_project"],
 
             # track run hyperparameters and metadata
             config=config,

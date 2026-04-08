@@ -11,7 +11,6 @@ class SimpleDataset(Dataset):
         max_coord_length = 2*config["braid_count"] - 2
 
         self.inputs = torch.empty((0, max_word_length), dtype=int)
-        self.targets = torch.empty((0, max_coord_length), dtype=int)
 
     def __len__(self):
         return len(self.inputs)

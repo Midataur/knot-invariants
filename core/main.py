@@ -3,6 +3,7 @@ CONFIG = {
     "model_type": "RegressionModel",
     "dataset": "smallandshort",
     "dataset_type": "basicregression",
+    "wandb_project": "knot-simclr", 
     "random_seed": 42,
 
     # dataset parameters
