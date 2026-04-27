@@ -3,11 +3,11 @@ model/*
 run_data/test/*.json
 run_data/train/*.json
 run_data/val/*.json
-datasets/
-model_saves/
+datasets/raw_dir/*
+datasets/processed_dir/*
+model_saves/*
 *.zip
 *.experiments/sh
 downloadmodel.sh
 venv
 *.pyc
-data-processing/katlas.rdf

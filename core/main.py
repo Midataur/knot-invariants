@@ -1,27 +1,24 @@
 CONFIG = {
-    "modelname": "smallandshort-36",
-    "model_type": "RegressionModel",
-    "dataset": "smallandshort",
-    "dataset_type": "basicregression",
+    "modelname": "test-1",
+    "model_type": "GCN",
+
+    "dataset": "katlas",
+    "dataset_type": "graph",
+
+    # the url to recover the datset from
+    "dataset_url": "http://katlas.org/Data/katlas.rdf.gz",
+
     "wandb_project": "knot-simclr", 
+
     "random_seed": 42,
 
     # dataset parameters
     "braid_count": 4,
     "max_word_length": 10,
 
-    # the size to cap the dataset at
-    # if the dataset is already smaller than this, this does nothing
-    "dataset_cap": 8_000_000,
-
     # embedding dimension
     # good starting value: 402
     "n_embed": 402,
-
-    # number of attention heads:
-    # good starting value: 6
-    # n_embed % n_heads must be 0
-    "n_heads": 6,
 
     # dropout factor to use
     # i usually set to zero
