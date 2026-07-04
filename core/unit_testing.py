@@ -81,6 +81,7 @@ class TestTransformations(unittest.TestCase):
         ]).reshape((-1, 1)).float()
 
         torch.testing.assert_close(post_twist.edge_attr, correct_colors)
+        self.assertIsNot(self.trefoil, post_twist)
 
         post_twist.validate()
     
@@ -97,6 +98,7 @@ class TestTransformations(unittest.TestCase):
             new_edges = sorted(undone.edge_index.t().tolist())
 
             self.assertListEqual(og_edges, new_edges, msg=f"id is {graph.knot_id}")
+            self.assertIsNot(undone, graph)
 
             undone.validate()
 

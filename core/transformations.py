@@ -6,29 +6,37 @@ import torch
 # see https://mathworld.wolfram.com/ReidemeisterMoves.html
 # parity refers to the two possible options for each move
 # eg. over twist vs under twist
-
-# twists an untwisted edge, adds a crossing
-# this follows the conventions in the masters notes
+@prep_graph(will_mutate_graph=True, wants_edges_transposed=True)
 def twist(graph, edge_index: int, parity: int):
-    graph = graph.clone()
+    """
+        Twists an untwisted edge, adds a crossing.
 
-    # transpose for convenience
-    graph.edge_index = graph.edge_index.t()
-
+        This follows the conventions in the masters notes.
+    """
     # get the edge data
     c1, c2 = inverse_color_function(graph.edge_attr[edge_index][0])
     source, target = graph.edge_index[edge_index]
 
+    graph_prep_state = GraphPrepState(
+        edges_start_transposed=True,
+        edges_should_end_transposed=True,
+        graph_has_been_cloned=True
+    )
+
     # delete the edge
-    delete_edge(graph, edge_index)    
+    delete_edge(graph, edge_index, **graph_prep_state._asdict())
 
     # add the new node
-    new_node = add_node(graph, -parity)
+    new_node = add_node(
+        graph, -parity,
+
+        **graph_prep_state._asdict()
+    )
 
     # add the three edges and their colors
     new_edges = torch.tensor([
-        [source, new_node],
-        [new_node,  new_node],
+        [source,   new_node],
+        [new_node, new_node],
         [new_node, target]
     ])
 
@@ -38,22 +46,22 @@ def twist(graph, edge_index: int, parity: int):
         color_function(-parity, c2)
     ])
 
-    add_edges(graph, new_edges, new_colors)
+    add_edges(
+        graph, new_edges, new_colors,
 
-    # transpose back
-    graph.edge_index = graph.edge_index.t()
+        **graph_prep_state._asdict()
+    )
 
     return graph
 
-# untwists a twisted edge, removes a crossing
+@prep_graph(wants_edges_transposed=True, will_mutate_graph=True)
 def untwist(graph, node_index):
-    graph = graph.clone()
+    """
+        Untwists a twisted edge, removes a crossing.
+    """
 
     if graph.x.shape[0] <= node_index:
         raise Exception("Node index out of bounds.")
-    
-    # transpose for convenience
-    graph.edge_index = graph.edge_index.t()
     
     # find the attached edges
     loop = None
@@ -69,18 +77,21 @@ def untwist(graph, node_index):
         source, target = edge
 
         if source != node_index:
+            # it's the incoming edge
             incoming = pos
             prenode = source
             precolor = inverse_color_function(
                 graph.edge_attr[pos]
             )[0]
         elif target != node_index:
+            # it's the outgoing edge
             outgoing = pos
             postnode = target
             postcolor = inverse_color_function(
                 graph.edge_attr[pos]
             )[1]
         else:
+            # it's the loop
             loop = pos
 
     # check that this is actually untwistable
@@ -88,34 +99,53 @@ def untwist(graph, node_index):
         raise Exception(
             f"Node is not untwistable: loop is {loop}, incoming is {incoming}, and outgoing is {outgoing}."
         )
+
+    graph_prep_state = GraphPrepState(
+        edges_start_transposed=True,
+        edges_should_end_transposed=True,
+        graph_has_been_cloned=True
+    )
     
     # delete the edges and the node
     batch_delete(
         graph, 
         node_indices=[node_index], 
-        edge_indices=[loop, incoming, outgoing]
+        edge_indices=[loop, incoming, outgoing],
+
+        **graph_prep_state._asdict()
     )
 
     # add the new edge
     add_edges(
         graph, 
         new_edges=[(prenode, postnode)],
-        new_colors=[color_function(precolor, postcolor)]
-    )
+        new_colors=[color_function(precolor, postcolor)],
 
-    # transpose back
-    graph.edge_index = graph.edge_index.t()
+        **graph_prep_state._asdict()
+    )
 
     return graph
 
-# swaps a twisted edge
-# leaves crossing count unchanged
-# we need this because you can't go below zero crossings in our formulation
+@prep_graph(wants_edges_transposed=False, will_mutate_graph=True)
 def swap_twist(graph):
+    """
+        Swaps a twisted edge.
+
+        Leaves crossing count unchanged.
+
+        We need this because you can't go below zero crossings in our formulation.
+    """
+
     if len(graph.x) > 1:
         raise Exception("Can only be used on single node graphs")
 
-    return mirror_knot(graph)
+    return mirror_knot(
+        graph,
+
+        edges_start_transposed=False,
+        edges_should_end_transposed=False,
+        graph_has_been_cloned=True
+    )
 
 # slides one edge over another
 # adds two crossings
@@ -144,34 +174,54 @@ def yang_baxter(graph, edge_1, edge_2):
 # the permuation matrix that swaps the rows
 S2_SWAP = torch.tensor([[0,1], [1,0]])
 
-# sends K -> -K
+@prep_graph(will_mutate_graph=True, wants_edges_transposed=False)
 def reverse_knot(graph):
-    new_graph = graph.clone()
-
+    """
+        Sends K -> -K.
+    """
     # reverse all the edges
-    new_graph.edge_index = S2_SWAP @ new_graph.edge_index
+    graph.edge_index = S2_SWAP @ graph.edge_index
 
     # change the colors appropriately
-    new_graph.edge_attr = np.vectorize(reverse_edge_color)(new_graph.edge_attr)
+    graph.edge_attr = np.vectorize(reverse_edge_color)(graph.edge_attr)
 
     # convert back to tensor
-    new_graph.edge_attr = torch.tensor(new_graph.edge_attr)
+    graph.edge_attr = torch.tensor(graph.edge_attr)
 
-    return new_graph
+    return graph
 
+@prep_graph(will_mutate_graph=True, wants_edges_transposed=False)
 def mirror_knot(graph):
-    new_graph = graph.clone()
+    """
+        Swap the orientations.
+    """
 
-    # swap the orientations
-    new_graph.x = -new_graph.x
+    graph.x = -graph.x
 
-    return new_graph
+    return graph
 
+@prep_graph(will_mutate_graph=True, wants_edges_transposed=False)
 def reverse_and_mirror_knot(graph):
-    return reverse_knot(mirror_knot(graph))
+    graph_prep_state = GraphPrepState(
+        edges_start_transposed=False,
+        edges_should_end_transposed=False,
+        graph_has_been_cloned=True
+    )
 
+    return reverse_knot(
+        mirror_knot(
+            graph, **graph_prep_state._asdict()
+        ),
+
+        **graph_prep_state._asdict()
+    )
+ 
+@prep_graph(will_mutate_graph=True, wants_edges_transposed=False)
 def identity(graph):
-    return graph.clone()
+    """
+        Effectively an alias for graph.clone() via the @prep_graph wrapper.
+    """
+    return graph
 
 VALID_SYM_TYPES = [
     "Chiral", # no symmetries
