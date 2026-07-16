@@ -1,4 +1,5 @@
-from utilities import format_for_pytorch_geo, color_function
+from graph_functions import color_function
+from utilities import format_for_pytorch_geo
 from collections import defaultdict as dd
 from transformations import *
 from tqdm import tqdm
@@ -209,6 +210,12 @@ def calculate_orientations(code, other_occurrance_table=None):
 def get_graphs(knots):
     graphs = []
 
+    graph_prep_state = GraphPrepState(
+        edges_start_transposed=False,
+        edges_should_end_transposed=False,
+        graph_has_been_cloned=False
+    )
+
     # read all the PD codes
     for knot_id, knot in tqdm(knots.items(), desc="Constructing graphs..."):
         code = knot[PD_CODE]
@@ -265,7 +272,7 @@ def get_graphs(knots):
         # check there's no mistakes
         graph.validate(raise_on_error=True)
 
-        # generate non-equivalent graphs depenind on symmetry type
+        # generate non-equivalent graphs depending on symmetry type
         variants = []
 
         transformations_to_do = NEEDED_TRANSFORMS[sym_type]
@@ -275,12 +282,16 @@ def get_graphs(knots):
             variants = [graph]
         else:
             for pos, transform in enumerate(transformations_to_do):
-                new_graph = transform(graph)
+                new_graph = transform(graph, **graph_prep_state._asdict())
                 new_graph.knot_id = f"{graph.knot_id} v{pos+1}"
                 assert(new_graph is not graph)
                 variants.append(new_graph)
         
         # save the graphs
         graphs += variants
+
+    # calculate faces for all the graphs
+    for graph in graphs:
+        graph.faces = get_faces(graph, **graph_prep_state._asdict())
     
     return graphs

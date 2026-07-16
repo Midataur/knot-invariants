@@ -5,6 +5,7 @@ import unittest
 import time
 import processing
 import transformations
+from utilities import GraphPrepState
 
 # tests the transformation code
 class TestTransformations(unittest.TestCase):
@@ -32,12 +33,31 @@ class TestTransformations(unittest.TestCase):
             self.assertIsInstance(graph.edge_index, torch.Tensor, msg=f"id is {graph.knot_id}")
             self.assertIsInstance(graph.edge_attr, torch.Tensor, msg=f"id is {graph.knot_id}")
 
+    # def test_seperate_graphs(self):
+    #     """Makes sure that all the graphs are genuinely different objects"""
+
+    #     correct_num_graphs = len(self.graphs)
+    #     actual_num_graphs = len(set(self.graphs))
+
+    #     self.assertEqual(
+    #         correct_num_graphs, actual_num_graphs,
+    #         msg=f"There are only {actual_num_graphs} graphs when there should be {actual_num_graphs}."
+    #     )
+
     def test_twist(self):
         """Try twisting the first edge with parity 1"""
+        graph_prep_state = GraphPrepState(
+            edges_start_transposed=False,
+            edges_should_end_transposed=False,
+            graph_has_been_cloned=False
+        )
+
         post_twist = transformations.twist(
-            self.trefoil,
-            0,
-            1
+            self.trefoil, # graph
+            0, # edge_index
+            1, # parity
+
+            **graph_prep_state._asdict()
         )
 
         # check the nodes
@@ -86,13 +106,27 @@ class TestTransformations(unittest.TestCase):
         post_twist.validate()
     
     def test_untwist(self):
+        untwist_prep_state = GraphPrepState(
+            edges_start_transposed=False,
+            edges_should_end_transposed=True,
+            graph_has_been_cloned=False
+        )
+
+        retwist_prep_state = GraphPrepState(
+            edges_start_transposed=True,
+            edges_should_end_transposed=False,
+            graph_has_been_cloned=True
+        )
+
         """Tries twisting and untwisting every knot."""
         for graph in self.graphs:
             og_edges = sorted(graph.edge_index.t().tolist())
 
             undone = transformations.untwist(
-                transformations.twist(graph, 0, 1), 
-                len(graph.x) # the index of the added node
+                transformations.twist(graph, 0, 1, **untwist_prep_state._asdict()), 
+                len(graph.x), # the index of the added node
+
+                **retwist_prep_state._asdict()
             )
 
             new_edges = sorted(undone.edge_index.t().tolist())

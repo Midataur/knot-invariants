@@ -1,11 +1,13 @@
 from utilities import *
+from graph_functions import *
 import numpy as np
 import torch
 
-# the following are reidermeister moves
-# see https://mathworld.wolfram.com/ReidemeisterMoves.html
-# parity refers to the two possible options for each move
-# eg. over twist vs under twist
+### the following are reidermeister moves                    ###
+### see https://mathworld.wolfram.com/ReidemeisterMoves.html ###
+### parity refers to the two possible options for each move  ###
+### eg. over twist vs under twist                            ###
+
 @prep_graph(will_mutate_graph=True, wants_edges_transposed=True)
 def twist(graph, edge_index: int, parity: int):
     """
@@ -166,10 +168,8 @@ def yang_baxter(graph, edge_1, edge_2):
     ...
 
 
-
-
-# the following are the 4 natural actions of Z/2Z on a knot diagram
-# they take in a pytorch geometric graph and apply the transform
+### the following are the 4 natural actions of Z/2Z on a knot diagram ###
+### they take in a pytorch geometric graph and apply the transform    ###
 
 # the permuation matrix that swaps the rows
 S2_SWAP = torch.tensor([[0,1], [1,0]])
