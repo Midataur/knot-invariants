@@ -210,12 +210,6 @@ def calculate_orientations(code, other_occurrance_table=None):
 def get_graphs(knots):
     graphs = []
 
-    graph_prep_state = GraphPrepState(
-        edges_start_transposed=False,
-        edges_should_end_transposed=False,
-        graph_has_been_cloned=False
-    )
-
     # read all the PD codes
     for knot_id, knot in tqdm(knots.items(), desc="Constructing graphs..."):
         code = knot[PD_CODE]
@@ -282,16 +276,29 @@ def get_graphs(knots):
             variants = [graph]
         else:
             for pos, transform in enumerate(transformations_to_do):
-                new_graph = transform(graph, **graph_prep_state._asdict())
+                new_graph = transform(
+                    graph,
+
+                    edges_start_transposed=False,
+                    edges_should_end_transposed=False,
+                    graph_has_been_cloned=False
+                )
+                
                 new_graph.knot_id = f"{graph.knot_id} v{pos+1}"
                 assert(new_graph is not graph)
                 variants.append(new_graph)
+
+        #calculate faces for all the variants
+        for variant in variants:
+            update_face_cache(
+                variant,
+
+                edges_start_transposed=False,
+                edges_should_end_transposed=False,
+                graph_has_been_cloned=True # want to mutate it
+            )
         
         # save the graphs
         graphs += variants
-
-    # calculate faces for all the graphs
-    for graph in graphs:
-        graph.faces = get_faces(graph, **graph_prep_state._asdict())
     
     return graphs

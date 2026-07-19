@@ -101,6 +101,13 @@ class TestTransformations(unittest.TestCase):
         ]).reshape((-1, 1)).float()
 
         torch.testing.assert_close(post_twist.edge_attr, correct_colors)
+
+        # check the face
+        # correct_face = {
+            
+        # }
+
+        # check they're different objecst
         self.assertIsNot(self.trefoil, post_twist)
 
         post_twist.validate()

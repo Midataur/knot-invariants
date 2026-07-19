@@ -13,7 +13,9 @@ UNDERCROSSING = -1
 OVERCROSSING = 1
 
 LEFT = -1
-RIGHT = 1
+RIGHT = 1   
+
+VALENCY = 4
 
 def color_function(start: int, end: int):
     """
@@ -24,28 +26,33 @@ def color_function(start: int, end: int):
 
         See master's notes: The Garbali-Gauss construction.
     """
-    if start < 0 and end < 0:
-        return -2
-    elif start < 0 and end > 0:
-        return -1
-    elif start > 0 and end < 0:
-        return 1
-    elif start > 0 and end > 0:
-        return 2
+    start_is_positive = start > 0
+    end_is_positive = end > 0
+
+    match (start_is_positive, end_is_positive):
+        case (False, False):
+            return -2
+        case (False, True):
+            return -1
+        case (True, False):
+            return 1
+        case (True, True):
+            return 2
     
     raise Exception(f"Invalid edge type ({start},{end}).")
 
 def inverse_color_function(color: int):
     "The inverse of color function"
 
-    if color == -2:
-        return (-1, -1)
-    elif color == -1:
-        return (-1, 1)
-    elif color == 1:
-        return (1, -1)
-    elif color == 2:
-        return (1, 1)
+    match color:
+        case -2:
+            return (-1, -1)
+        case -1:
+            return (-1, 1)
+        case 1:
+            return (1, -1)
+        case 2:
+            return (1, 1)
 
     raise Exception("Invalid color given")
 
@@ -66,6 +73,12 @@ class GraphPrepState(NamedTuple):
     edges_start_transposed: bool
     edges_should_end_transposed: bool
     graph_has_been_cloned: bool
+
+DEFAULT_STATE = GraphPrepState(
+    edges_start_transposed=False,
+    edges_should_end_transposed=False,
+    graph_has_been_cloned=False
+)
 
 def prep_graph(
         *, # forces kwargs for these
@@ -95,8 +108,11 @@ def prep_graph(
 
             **kwargs
         ):
+            need_to_update_face_cache = False
+
             # do we need to clone the graph?
             if will_mutate_graph and not graph_has_been_cloned:
+                need_to_update_face_cache = True
                 graph = graph.clone()
             
             # do we need to transpose the edges?
@@ -107,6 +123,15 @@ def prep_graph(
                 edges_are_transposed = wants_edges_transposed
             
             result = func(graph, *args, **kwargs)
+
+            # do we need to update the face cache?
+            if need_to_update_face_cache and func is not update_face_cache:
+                graph = update_face_cache(
+                    graph,
+                    edges_start_transposed=edges_are_transposed,
+                    edges_should_end_transposed=edges_are_transposed,
+                    graph_has_been_cloned=True
+                )
 
             # do we need to untranspose the edges?
             if edges_are_transposed != edges_should_end_transposed:
@@ -265,15 +290,16 @@ def get_face_next_edge(
     face_side: int,
     crossing_type: int, 
     incoming_outgoing: int, 
-    next_node_index: int
+    pivot_node_index: int
 ):
     """
         Returns the next edge when traversing a face.
+        Also returns the traversal direction of that edge.
 
         face_side is -1 for left, +1 for right.
     """
 
-    next_node_sign = graph.x[next_node_index]
+    next_node_sign = graph.x[pivot_node_index]
 
     # dd is -1 if the incoming edge is the desired edge
     # and +1 if the outgoing is
@@ -289,7 +315,7 @@ def get_face_next_edge(
     # get edges connected to node
     candidates = get_adjacent_edges(
         graph, 
-        next_node_index,
+        pivot_node_index,
 
         **graph_prep_state._asdict()
     )
@@ -311,7 +337,7 @@ def get_face_next_edge(
         if (
             desired_direction == INCOMING and 
             target_type == -crossing_type and 
-            target == next_node_index
+            target == pivot_node_index
         ):
             traversal_direction = REVERSED
             return edge_index, traversal_direction
@@ -319,7 +345,7 @@ def get_face_next_edge(
         elif (
             desired_direction == OUTGOING and 
             source_type == -crossing_type and
-            source == next_node_index
+            source == pivot_node_index
         ):
             traversal_direction = STANDARD
             return edge_index, traversal_direction
@@ -393,7 +419,7 @@ def get_face(graph, start_edge, face_side):
             face_side=face_side,
             crossing_type=edge_crossing_type,
             incoming_outgoing=traversal_direction,
-            next_node_index=next_node_index,
+            pivot_node_index=next_node_index,
 
             **graph_prep_state._asdict()
         )
@@ -418,7 +444,15 @@ def get_faces(graph):
         graph_has_been_cloned=False
     )
 
+    # each edge will be in exactly two faces
+    # if we keep track of this, we can save a lot of computation
+    times_seen = [0 for edge in graph.edge_index]
+
     for edge_index in range(num_edges):
+        # check if we can save some time
+        if times_seen[edge_index] >= 2:
+            continue
+
         for side in [LEFT, RIGHT]:
             new_face = get_face(
                 graph=graph, 
@@ -429,5 +463,98 @@ def get_faces(graph):
 
             # get left face
             faces.add(new_face)
+
+            for edge in new_face:
+                times_seen[edge] += 1
     
     return faces
+
+@prep_graph(will_mutate_graph=True, wants_edges_transposed=True)
+def update_face_cache(graph):
+    """
+        Recalculates the face cache.
+
+        TODO: If this is too slow, do a smarter update.
+    """
+    graph_prep_state = GraphPrepState(
+        edges_start_transposed=True,
+        edges_should_end_transposed=True,
+        graph_has_been_cloned=True
+    )
+
+    graph.faces = get_faces(graph, **graph_prep_state._asdict())
+
+    return graph
+
+@prep_graph(will_mutate_graph=False, wants_edges_transposed=True)
+def get_pd_code_from_graph(graph):
+    """
+        Takes in a graph, gives the planar diagram code.
+    """
+
+    graph_prep_state = GraphPrepState(
+        edges_start_transposed=True,
+        edges_should_end_transposed=True,
+        graph_has_been_cloned=False
+    )
+
+    pd_code = ""
+
+    # build up the code one node at a time
+    for node_id in range(graph.x.shape[0]):
+        # get the connecting edges
+        adjacent_edges = get_adjacent_edges(graph, node_id, **graph_prep_state._asdict())
+
+        starting_edge = None
+
+        # find the incoming under
+        for edge_id in adjacent_edges:
+            target = graph.edge_index[edge_id][1]
+
+            # get edge crossing type
+            target_type = inverse_color_function(graph.edge_attr[edge_id])[1]
+
+            # looking for: 
+            # edge type at node is UNDERCROSSING
+            # AND 
+            # target is the node
+            if target_type == UNDERCROSSING and target == node_id:
+                starting_edge = edge_id
+                break
+
+        assert starting_edge is not None
+        
+        # get counter-clockwise order of the edges
+        # inefficient, but it works
+        order = [starting_edge]
+        cur_edge = starting_edge
+        cur_direction = STANDARD
+        cur_crossing_type = UNDERCROSSING
+
+        for x in range(VALENCY-1):
+            # get next edge id
+            cur_edge, cur_direction = get_face_next_edge(
+                graph,
+                face_side=RIGHT,
+                crossing_type=cur_crossing_type,
+                incoming_outgoing=cur_direction,
+                pivot_node_index=node_id,
+
+                **graph_prep_state._asdict()
+            )
+
+            # swap the direction (we're staying at the same node)
+            cur_direction *= -1
+
+            # add next edge to the order
+            order.append(cur_edge)
+
+            # update crossing type
+            # we will always alternate over and under
+            cur_crossing_type *= -1
+    
+        # add to the code
+        pd_code += f"X{list(order)};"
+
+    # strip the last ;
+    return pd_code[:-1]
