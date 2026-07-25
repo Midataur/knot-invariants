@@ -1,11 +1,15 @@
 # a bunch of unit tests to make sure that everything is correct
+from pd_functions import faces_from_pd_code
+from graph_functions import *
+from graph_transformations import *
+from pd_functions import *
+from pd_transformations import *
 import torch
 import torch.testing
 import unittest
 import time
 import processing
-import transformations
-from utilities import GraphPrepState
+import graph_transformations as graph_transformations
 
 # tests the transformation code
 class TestTransformations(unittest.TestCase):
@@ -33,115 +37,98 @@ class TestTransformations(unittest.TestCase):
             self.assertIsInstance(graph.edge_index, torch.Tensor, msg=f"id is {graph.knot_id}")
             self.assertIsInstance(graph.edge_attr, torch.Tensor, msg=f"id is {graph.knot_id}")
 
-    # def test_seperate_graphs(self):
-    #     """Makes sure that all the graphs are genuinely different objects"""
-
-    #     correct_num_graphs = len(self.graphs)
-    #     actual_num_graphs = len(set(self.graphs))
-
-    #     self.assertEqual(
-    #         correct_num_graphs, actual_num_graphs,
-    #         msg=f"There are only {actual_num_graphs} graphs when there should be {actual_num_graphs}."
-    #     )
-
     def test_twist(self):
-        """Try twisting the first edge with parity 1"""
-        graph_prep_state = GraphPrepState(
-            edges_start_transposed=False,
-            edges_should_end_transposed=False,
-            graph_has_been_cloned=False
-        )
+        """
+            Try twisting the first edge using graph and pd.
 
-        post_twist = transformations.twist(
-            self.trefoil, # graph
-            0, # edge_index
-            1, # parity
+            Makes sure they give the same answer.
+        """
 
-            **graph_prep_state._asdict()
-        )
-
-        # check the nodes
-        correct_x = torch.tensor([
-            -1, 
-            -1, 
-            -1,
-            -1 # added new node
-        ]).reshape((-1,1)).float()
-
-        torch.testing.assert_close(post_twist.x, correct_x)
-
-        # check the edges
-        correct_edge_index = torch.tensor([
-            #[0, 2], deleted the first edge
-            [2, 1],
-            [1, 0],
-            [0, 2],
-            [2, 1],
-            [1, 0],
-
-            [0, 3], # added new edges
-            [3, 3],
-            [3, 2]
-        ]).t()
-
-        torch.testing.assert_close(post_twist.edge_index, correct_edge_index)
-
-        # check the edge colors
-        correct_colors = torch.tensor([
-            #1, removed the first edge
-            -1,
-            1,
-            -1,
-            1,
-            -1,
-
-            2, # added new ones
-            1,
-            -2
-        ]).reshape((-1, 1)).float()
-
-        torch.testing.assert_close(post_twist.edge_attr, correct_colors)
-
-        # check the face
-        # correct_face = {
-            
-        # }
-
-        # check they're different objecst
-        self.assertIsNot(self.trefoil, post_twist)
-
-        post_twist.validate()
-    
-    def test_untwist(self):
-        untwist_prep_state = GraphPrepState(
-            edges_start_transposed=False,
-            edges_should_end_transposed=True,
-            graph_has_been_cloned=False
-        )
-
-        retwist_prep_state = GraphPrepState(
-            edges_start_transposed=True,
-            edges_should_end_transposed=False,
-            graph_has_been_cloned=True
-        )
-
-        """Tries twisting and untwisting every knot."""
         for graph in self.graphs:
-            og_edges = sorted(graph.edge_index.t().tolist())
+            for option1 in (UNDERCROSSING, OVERCROSSING):
+                for option2 in (-1, 1):
+                    via_graph_twist = graph_twist(graph, 0, option1, option2, **SUPPRESSED_DEFAULT._asdict())
+                    via_pd_twist = pd_twist(graph.pd_code, 0, option1, option2)
 
-            undone = transformations.untwist(
-                transformations.twist(graph, 0, 1, **untwist_prep_state._asdict()), 
-                len(graph.x), # the index of the added node
+                    # compare the codes
+                    code_from_graph_twist = get_pd_code_from_graph(via_graph_twist, **SUPPRESSED_DEFAULT._asdict())
 
-                **retwist_prep_state._asdict()
+                    self.assertListEqual(
+                        code_from_graph_twist, via_pd_twist, 
+                        msg=f"Broke on {graph.knot_id} with settings {option1} {option2}"
+                    )
+    
+    def test_pd_untwist(self):
+        """Tries twisting and untwisting every knot using pd transformations."""
+
+        # for graph in self.graphs:
+        #     for option1 in (UNDERCROSSING, OVERCROSSING):
+        #         for option2 in (-1, 1):
+        #             twisted_pd = pd_twist(graph.pd_code)
+                    
+
+        raise NotImplementedError("PD UNTWIST NOT IMPLEMENTED")
+    
+    def test_faces(self):
+        """
+            Calculates the faces of all the base knots in two different ways,
+            then checks to see that they both give the same answer.
+        """
+
+        for graph in self.graphs:
+            # calculate from graph
+            graph_faces = graph_get_faces(graph, **SUPPRESSED_DEFAULT._asdict())
+
+            # calculate from pd code
+            pd_code = graph.pd_code
+            pd_faces = faces_from_pd_code(pd_code)
+
+            self.assertSetEqual(
+                graph_faces, pd_faces,
+                msg=f"failed on {graph.knot_id}"
             )
 
-            new_edges = sorted(undone.edge_index.t().tolist())
+            self.assertSetEqual(
+                graph.faces, pd_faces,
+                msg=f"failed on {graph.knot_id}"
+            )
 
-            self.assertListEqual(og_edges, new_edges, msg=f"id is {graph.knot_id}")
-            self.assertIsNot(undone, graph)
+    def test_reverse(self):
+        """
+            Reverses each base knot via graph and pd methods.
 
-            undone.validate()
+            Checks that these both give the same pd code.
+        """
+
+        for graph in self.graphs:
+            # reverse the graph with graph methods
+            reversed_graph = graph_reverse_knot(graph, **SUPPRESSED_DEFAULT._asdict())
+            pd_from_graph = get_pd_code_from_graph(reversed_graph, **SUPPRESSED_DEFAULT._asdict())
+
+            # reverse using pd methods
+            pd_code = graph.pd_code
+            reversed_pd_code = pd_reverse_knot(pd_code)
+
+            self.assertListEqual(pd_from_graph, reversed_pd_code, msg=f"Broke on {graph.knot_id}.")
+
+    def test_mirror(self):
+        """
+            Mirrors each base knot via graph and pd methods.
+
+            Checks that these both give the same pd code.
+        """
+
+        for graph in self.graphs:
+            # reverse the graph with graph methods
+            mirrored_graph = graph_mirror_knot(graph, **SUPPRESSED_DEFAULT._asdict())
+            pd_from_graph = get_pd_code_from_graph(mirrored_graph, **SUPPRESSED_DEFAULT._asdict())
+
+            # reverse using pd methods
+            pd_code = graph.pd_code
+            mirrored_pd_code = pd_mirror_knot(pd_code)
+
+            self.assertListEqual(pd_from_graph, mirrored_pd_code, msg=f"Broke on {graph.knot_id}.")
+
 
 if __name__ == "__main__":
     unittest.main()

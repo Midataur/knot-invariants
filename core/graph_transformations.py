@@ -5,11 +5,9 @@ import torch
 
 ### the following are reidermeister moves                    ###
 ### see https://mathworld.wolfram.com/ReidemeisterMoves.html ###
-### parity refers to the two possible options for each move  ###
-### eg. over twist vs under twist                            ###
 
 @prep_graph(will_mutate_graph=True, wants_edges_transposed=True)
-def twist(graph, edge_index: int, parity: int):
+def graph_twist(graph, edge_index: int, over_under: int, node_sign: int):
     """
         Twists an untwisted edge, adds a crossing.
 
@@ -22,7 +20,8 @@ def twist(graph, edge_index: int, parity: int):
     graph_prep_state = GraphPrepState(
         edges_start_transposed=True,
         edges_should_end_transposed=True,
-        graph_has_been_cloned=True
+        graph_has_been_cloned=True,
+        suppress_face_update=False
     )
 
     # delete the edge
@@ -30,7 +29,7 @@ def twist(graph, edge_index: int, parity: int):
 
     # add the new node
     new_node = add_node(
-        graph, -parity,
+        graph, node_sign,
 
         **graph_prep_state._asdict()
     )
@@ -43,9 +42,9 @@ def twist(graph, edge_index: int, parity: int):
     ])
 
     new_colors = torch.tensor([
-        color_function(c1, parity),
-        color_function(parity, -parity),
-        color_function(-parity, c2)
+        color_function(c1, over_under),
+        color_function(over_under, -over_under),
+        color_function(-over_under, c2)
     ])
 
     add_edges(
@@ -57,7 +56,7 @@ def twist(graph, edge_index: int, parity: int):
     return graph
 
 @prep_graph(wants_edges_transposed=True, will_mutate_graph=True)
-def untwist(graph, node_index):
+def graph_untwist(graph, node_index):
     """
         Untwists a twisted edge, removes a crossing.
     """
@@ -105,7 +104,8 @@ def untwist(graph, node_index):
     graph_prep_state = GraphPrepState(
         edges_start_transposed=True,
         edges_should_end_transposed=True,
-        graph_has_been_cloned=True
+        graph_has_been_cloned=True,
+        suppress_face_update=False
     )
     
     # delete the edges and the node
@@ -129,7 +129,7 @@ def untwist(graph, node_index):
     return graph
 
 @prep_graph(wants_edges_transposed=False, will_mutate_graph=True)
-def swap_twist(graph):
+def graph_swap_twist(graph):
     """
         Swaps a twisted edge.
 
@@ -141,7 +141,7 @@ def swap_twist(graph):
     if len(graph.x) > 1:
         raise Exception("Can only be used on single node graphs")
 
-    return mirror_knot(
+    return graph_mirror_knot(
         graph,
 
         edges_start_transposed=False,
@@ -152,19 +152,19 @@ def swap_twist(graph):
 # slides one edge over another
 # adds two crossings
 # this is R2
-def poke(graph, edge_1, edge_2, parity):
+def graph_poke(graph, edge_1, edge_2, parity):
     ...
 
 # reverse slides on edge over another
 # removes two crossings
 # this is R2^{-1}
-def unpoke(graph, edge_1, edge_2):
+def graph_unpoke(graph, edge_1, edge_2):
     ...
 
 # yang-baxters
 # does not change crossings
 # lhs to rhs in the mathworld image
-def yang_baxter(graph, edge_1, edge_2):
+def graph_yang_baxter(graph, edge_1, edge_2):
     ...
 
 
@@ -175,9 +175,9 @@ def yang_baxter(graph, edge_1, edge_2):
 S2_SWAP = torch.tensor([[0,1], [1,0]])
 
 @prep_graph(will_mutate_graph=True, wants_edges_transposed=False)
-def reverse_knot(graph):
+def graph_reverse_knot(graph):
     """
-        Sends K -> -K.
+        Swaps the traversal direction. Sends K -> -K.
     """
     # reverse all the edges
     graph.edge_index = S2_SWAP @ graph.edge_index
@@ -191,9 +191,9 @@ def reverse_knot(graph):
     return graph
 
 @prep_graph(will_mutate_graph=True, wants_edges_transposed=False)
-def mirror_knot(graph):
+def graph_mirror_knot(graph):
     """
-        Swap the orientations.
+        Swap the orientations. Sends K -> K*.
     """
 
     graph.x = -graph.x
@@ -201,15 +201,16 @@ def mirror_knot(graph):
     return graph
 
 @prep_graph(will_mutate_graph=True, wants_edges_transposed=False)
-def reverse_and_mirror_knot(graph):
+def graph_reverse_and_mirror_knot(graph):
     graph_prep_state = GraphPrepState(
         edges_start_transposed=False,
         edges_should_end_transposed=False,
-        graph_has_been_cloned=True
+        graph_has_been_cloned=True,
+        suppress_face_update=False
     )
 
-    return reverse_knot(
-        mirror_knot(
+    return graph_reverse_knot(
+        graph_mirror_knot(
             graph, **graph_prep_state._asdict()
         ),
 
@@ -217,7 +218,7 @@ def reverse_and_mirror_knot(graph):
     )
  
 @prep_graph(will_mutate_graph=True, wants_edges_transposed=False)
-def identity(graph):
+def graph_identity(graph):
     """
         Effectively an alias for graph.clone() via the @prep_graph wrapper.
     """
@@ -232,10 +233,10 @@ VALID_SYM_TYPES = [
 ]
 
 # for a given symmetry type, tells you the operations that generate a distinct knot
-NEEDED_TRANSFORMS = {
-    "Chiral": [identity, reverse_knot, mirror_knot, reverse_and_mirror_knot],
-    "Fully amphicheiral": [identity],
-    "Negative amphicheiral": [identity, reverse_knot], # note -K = K* for this class
-    "Positively amphicheiral": [identity, reverse_knot], # note -K = -K* for this class
-    "Reversible": [identity, mirror_knot] # note K* = -K* for this class
+NEEDED_GRAPH_TRANSFORMS = {
+    "Chiral": [graph_identity, graph_reverse_knot, graph_mirror_knot, graph_reverse_and_mirror_knot],
+    "Fully amphicheiral": [graph_identity],
+    "Negative amphicheiral": [graph_identity, graph_reverse_knot], # note -K = K* for this class
+    "Positively amphicheiral": [graph_identity, graph_reverse_knot], # note -K = -K* for this class
+    "Reversible": [graph_identity, graph_mirror_knot] # note K* = -K* for this class
 }

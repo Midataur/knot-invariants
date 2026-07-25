@@ -1,67 +1,7 @@
 from typing import NamedTuple
 from functools import wraps
+from utilities import *
 import torch
-
-# some standard conventions
-INCOMING = -1
-OUTGOING = 1
-
-STANDARD = -1
-REVERSED = 1
-
-UNDERCROSSING = -1
-OVERCROSSING = 1
-
-LEFT = -1
-RIGHT = 1   
-
-VALENCY = 4
-
-def color_function(start: int, end: int):
-    """
-        Edge coloring piecewise function.
-
-        Swapping both crossing types is the same as
-        multiplying by -1. 
-
-        See master's notes: The Garbali-Gauss construction.
-    """
-    start_is_positive = start > 0
-    end_is_positive = end > 0
-
-    match (start_is_positive, end_is_positive):
-        case (False, False):
-            return -2
-        case (False, True):
-            return -1
-        case (True, False):
-            return 1
-        case (True, True):
-            return 2
-    
-    raise Exception(f"Invalid edge type ({start},{end}).")
-
-def inverse_color_function(color: int):
-    "The inverse of color function"
-
-    match color:
-        case -2:
-            return (-1, -1)
-        case -1:
-            return (-1, 1)
-        case 1:
-            return (1, -1)
-        case 2:
-            return (1, 1)
-
-    raise Exception("Invalid color given")
-
-# takes the color (a,b) and gives you (b,a)
-def reverse_edge_color(color: int):
-    if abs(color) == 1:
-        return -color
-    
-    return color
 
 class GraphPrepState(NamedTuple):
     """
@@ -73,11 +13,20 @@ class GraphPrepState(NamedTuple):
     edges_start_transposed: bool
     edges_should_end_transposed: bool
     graph_has_been_cloned: bool
+    suppress_face_update: bool
 
 DEFAULT_STATE = GraphPrepState(
     edges_start_transposed=False,
     edges_should_end_transposed=False,
-    graph_has_been_cloned=False
+    graph_has_been_cloned=False,
+    suppress_face_update=False
+)
+
+SUPPRESSED_DEFAULT = GraphPrepState(
+    edges_start_transposed=False,
+    edges_should_end_transposed=False,
+    graph_has_been_cloned=False,
+    suppress_face_update=True
 )
 
 def prep_graph(
@@ -105,6 +54,7 @@ def prep_graph(
             edges_start_transposed: bool,
             edges_should_end_transposed: bool,
             graph_has_been_cloned: bool,
+            suppress_face_update: bool,
 
             **kwargs
         ):
@@ -125,12 +75,17 @@ def prep_graph(
             result = func(graph, *args, **kwargs)
 
             # do we need to update the face cache?
-            if need_to_update_face_cache and func is not update_face_cache:
+            if (
+                need_to_update_face_cache and 
+                func is not update_face_cache and 
+                not suppress_face_update
+            ):
                 graph = update_face_cache(
                     graph,
                     edges_start_transposed=edges_are_transposed,
                     edges_should_end_transposed=edges_are_transposed,
-                    graph_has_been_cloned=True
+                    graph_has_been_cloned=True,
+                    suppress_face_update=True
                 )
 
             # do we need to untranspose the edges?
@@ -150,6 +105,7 @@ def delete_edge(graph, edge_index):
 
         Does not delete any attached nodes.
     """
+
     # delete the edge
     graph.edge_index = torch.concat([
         graph.edge_index[:edge_index],
@@ -194,7 +150,8 @@ def batch_delete(graph, node_indices=[], edge_indices=[]):
     graph_prep_state = GraphPrepState(
         edges_start_transposed=True,
         edges_should_end_transposed=True,
-        graph_has_been_cloned=True
+        graph_has_been_cloned=True,
+        suppress_face_update=False
     )
 
     # delete the nodes
@@ -268,7 +225,7 @@ def get_left(crossing_type: int, direction: int, node_sign: int):
     return -crossing_type*direction*node_sign
 
 @prep_graph(will_mutate_graph=False, wants_edges_transposed=True)
-def get_next_node_index(graph, edge_index: int, direction: int):
+def graph_get_next_node_index(graph, edge_index: int, direction: int):
     """
         Takes in an index of a directed edge.
 
@@ -285,7 +242,7 @@ def get_next_node_index(graph, edge_index: int, direction: int):
         return source
 
 @prep_graph(will_mutate_graph=False, wants_edges_transposed=True)
-def get_face_next_edge(
+def graph_get_face_next_edge(
     graph, 
     face_side: int,
     crossing_type: int, 
@@ -309,11 +266,12 @@ def get_face_next_edge(
     graph_prep_state = GraphPrepState(
         graph_has_been_cloned=False,
         edges_start_transposed=True,
-        edges_should_end_transposed=True
+        edges_should_end_transposed=True,
+        suppress_face_update=False
     )
     
     # get edges connected to node
-    candidates = get_adjacent_edges(
+    candidates = graph_get_adjacent_edges(
         graph, 
         pivot_node_index,
 
@@ -353,7 +311,7 @@ def get_face_next_edge(
     raise Exception("No next edge found, something has gone wrong.")
     
 @prep_graph(will_mutate_graph=False, wants_edges_transposed=True)
-def get_adjacent_edges(graph, node_id):
+def graph_get_adjacent_edges(graph, node_id):
     """
         Finds all edges that attach to a node.
 
@@ -370,7 +328,7 @@ def get_adjacent_edges(graph, node_id):
     return adjacent_edges
 
 @prep_graph(will_mutate_graph=False, wants_edges_transposed=True)
-def get_face(graph, start_edge, face_side):
+def graph_get_face(graph, start_edge, face_side):
     """
         Gets the face an edge belongs to.
         start_edge = index of the edge to start on.
@@ -389,7 +347,8 @@ def get_face(graph, start_edge, face_side):
     graph_prep_state = GraphPrepState(
         edges_start_transposed=True,
         edges_should_end_transposed=True,
-        graph_has_been_cloned=False
+        graph_has_been_cloned=False,
+        suppress_face_update=False
     )
 
     while True:
@@ -397,7 +356,7 @@ def get_face(graph, start_edge, face_side):
         face.append(cur_edge_index)
 
         # get next node data
-        next_node_index = get_next_node_index(
+        next_node_index = graph_get_next_node_index(
             graph=graph,
             edge_index=cur_edge_index,
             direction=traversal_direction,
@@ -414,7 +373,7 @@ def get_face(graph, start_edge, face_side):
 
         # incoming or outgoing?
         # see april 19th section of masters notes
-        cur_edge_index, traversal_direction = get_face_next_edge(
+        cur_edge_index, traversal_direction = graph_get_face_next_edge(
             graph=graph,
             face_side=face_side,
             crossing_type=edge_crossing_type,
@@ -431,7 +390,7 @@ def get_face(graph, start_edge, face_side):
     return tuple(sorted(face))
 
 @prep_graph(will_mutate_graph=False, wants_edges_transposed=True)
-def get_faces(graph):
+def graph_get_faces(graph):
     """Finds all the faces in a graph"""
 
     faces = set()
@@ -441,7 +400,8 @@ def get_faces(graph):
     graph_prep_state = GraphPrepState(
         edges_start_transposed=True,
         edges_should_end_transposed=True,
-        graph_has_been_cloned=False
+        graph_has_been_cloned=False,
+        suppress_face_update=False
     )
 
     # each edge will be in exactly two faces
@@ -454,18 +414,20 @@ def get_faces(graph):
             continue
 
         for side in [LEFT, RIGHT]:
-            new_face = get_face(
+            new_face = graph_get_face(
                 graph=graph, 
                 start_edge=edge_index, 
                 face_side=side, 
                 **graph_prep_state._asdict()
             )
 
-            # get left face
-            faces.add(new_face)
+            # add the face if needed
+            if new_face not in faces:
+                faces.add(new_face)
 
-            for edge in new_face:
-                times_seen[edge] += 1
+                # update times seen
+                for edge in new_face:
+                    times_seen[edge] += 1
     
     return faces
 
@@ -474,36 +436,38 @@ def update_face_cache(graph):
     """
         Recalculates the face cache.
 
-        TODO: If this is too slow, do a smarter update.
+        Very slow, don't call this often.
     """
     graph_prep_state = GraphPrepState(
         edges_start_transposed=True,
         edges_should_end_transposed=True,
-        graph_has_been_cloned=True
+        graph_has_been_cloned=True,
+        suppress_face_update=False
     )
 
-    graph.faces = get_faces(graph, **graph_prep_state._asdict())
+    graph.faces = graph_get_faces(graph, **graph_prep_state._asdict())
 
     return graph
 
 @prep_graph(will_mutate_graph=False, wants_edges_transposed=True)
-def get_pd_code_from_graph(graph):
+def get_pd_code_from_graph(graph, one_index=False):
     """
-        Takes in a graph, gives the planar diagram code.
+        Takes in a graph, gives the planar diagram code as a list of integers.
     """
 
     graph_prep_state = GraphPrepState(
         edges_start_transposed=True,
         edges_should_end_transposed=True,
-        graph_has_been_cloned=False
+        graph_has_been_cloned=False,
+        suppress_face_update=False
     )
 
-    pd_code = ""
+    pd_code = []
 
     # build up the code one node at a time
     for node_id in range(graph.x.shape[0]):
         # get the connecting edges
-        adjacent_edges = get_adjacent_edges(graph, node_id, **graph_prep_state._asdict())
+        adjacent_edges = graph_get_adjacent_edges(graph, node_id, **graph_prep_state._asdict())
 
         starting_edge = None
 
@@ -531,9 +495,9 @@ def get_pd_code_from_graph(graph):
         cur_direction = STANDARD
         cur_crossing_type = UNDERCROSSING
 
-        for x in range(VALENCY-1):
+        for x in range(EDGES_PER_NODE-1):
             # get next edge id
-            cur_edge, cur_direction = get_face_next_edge(
+            cur_edge, cur_direction = graph_get_face_next_edge(
                 graph,
                 face_side=RIGHT,
                 crossing_type=cur_crossing_type,
@@ -554,7 +518,10 @@ def get_pd_code_from_graph(graph):
             cur_crossing_type *= -1
     
         # add to the code
-        pd_code += f"X{list(order)};"
+        pd_code += order
 
-    # strip the last ;
-    return pd_code[:-1]
+    if one_index:
+        # reindex the code if requested
+        pd_code = [x+1 for x in pd_code]
+
+    return pd_code

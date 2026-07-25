@@ -189,6 +189,9 @@ def train(config):
         # save embedding pictures so we can make gifs later
         # this is broken since we added accelerate
         # TODO: FIX this later
+        # UPDATE: two projects later, this code is still here and broken
+        # maybe one day :')
+
         # if accelerator.is_local_main_process:
         #     save_embedding_pictures(model)
 

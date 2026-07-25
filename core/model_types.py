@@ -170,8 +170,6 @@ class BasicTransformer(nn.Module):
     def get_loss(self):
         return nn.CrossEntropyLoss()
     
-    # TODO: support multiple accuracy types
-    # probably attach it to the model
     def calculate_accuracy(self, output, target):
         # targets is a (B) tensor of integers that have the index of the correct class
         # we need to see if the max logit is at the right index

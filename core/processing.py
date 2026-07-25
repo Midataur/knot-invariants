@@ -1,8 +1,9 @@
 from graph_functions import color_function
-from utilities import format_for_pytorch_geo
 from collections import defaultdict as dd
-from transformations import *
 from tqdm import tqdm
+from pd_functions import *
+from pd_transformations import *
+from utilities import *
 import torch_geometric as tg
 import torch
 
@@ -20,8 +21,6 @@ PD_CODE = "PD_code"
 SYM_TYPE = "sym_type"
 IS_LINK = "is_link"
 
-SHIELDS_MAX_ITERATIONS = 100_000
-
 # if no sim type is provided we assume that the knot is fully symmetric.
 # this is the conservative assumption and guarantees that we won't accidentally
 # have two equivalent knots listed as different.
@@ -35,8 +34,13 @@ VALID_SYM_TYPES = [
     "Reversible" # K = -K
 ]
 
-# processes a PD presentation from katlas into a nicer form
 def process_PD(raw):
+    """
+        Processes a PD presentation from katlas into a nicer form.
+
+        Specifically, the output is just the list of integers.
+    """
+
     nodes = raw.split(" ")
     nodes = [x.replace("</sub>","").replace("X<sub>","") for x in nodes]
 
@@ -52,8 +56,11 @@ def process_PD(raw):
 
     return PD_code
 
-# takes a line from the rdf file and processes it
 def extract_line_info(line, mode="PD"):
+    """
+        Takes a line from the rdf file and processes it.
+    """
+
     # split into components
     line = line.strip()
     components = line.split(RDF_BREAKPOINT)
@@ -94,7 +101,10 @@ def get_knots(raw_filename):
             if PD_IDENTIFIER in line:
                 knot_id, code = extract_line_info(line, mode="PD")
 
-                knots[knot_id][PD_CODE] = code
+                # make the pd code zero indexed
+                zero_indexed_code = [x-1 for x in code]
+
+                knots[knot_id][PD_CODE] = zero_indexed_code
 
             # extract symmetry type
             elif SYM_IDENTIFIER in line:
@@ -128,86 +138,86 @@ def get_knots(raw_filename):
 
     return real_knots
 
-# given a PD code, precomputes the "other occurrance" lookup table
-# this saves time in the main Shields algorithm
-def get_other_occurrance_table(code):
-    lookup = [None for x in code]
+def graph_from_pd_code(pd_code):
+    """Turns a planar diagram code into the corresponding graph."""
+
+    edges = []
+    edge_colors = []
+
+    # calculate the other occurrance table
+    other_occurrance_table = get_pd_other_occurrance_table(pd_code)
+    orientations = calculate_orientations(pd_code, other_occurrance_table)
+
+    # build up the graph
+    # see master's notes: the PD to Garbali algorithm
+    # we're using a slight modification where we use the Shields algo for orientations
+    current_pos = 0
+
+    # we want the edge labels to match the pd code
+    # we use this list to make sure that happens
+    pd_code_edge_labels = []
+
+    for x in range(max(pd_code)+1):
+        # find the opposite edge
+        current_node = current_pos//EDGES_PER_NODE
+        opposite = current_node*EDGES_PER_NODE + (current_pos+2)%EDGES_PER_NODE
+
+        # find where the opposite edge connects to
+        next_pos = other_occurrance_table[opposite]
+        next_node = next_pos//EDGES_PER_NODE
+
+        # work out what the edge color should be
+        # even positions are under (-1), odd are over (+1)
+        source_crossing_type = (-1)**(opposite % 2 + 1)
+        target_crossing_type = (-1)**(next_pos % 2 + 1)
+
+        # find the pd code label
+        pd_code_edge_labels.append(pd_code[next_pos])
+
+        # add the edge
+        edges.append((current_node, next_node))
+        edge_colors.append(
+            color_function(source_crossing_type, target_crossing_type)
+        )
+
+        # move to the next one
+        current_pos = next_pos
     
-    # keeps track of the first time we saw a symbol
-    first_time = [None for x in range(max(code))]
+    # sort the edges to match the edge label order
+    sorted_edges = []
+    sorted_edge_colors = []
 
-    for pos, x in enumerate(code):
-        # the minus 1 is to account for the difference in indexing
-        # 0 vs 1 indexed
-        if first_time[x-1] == None:
-            # seen this symbol for the first time,
-            # don't know where the other one is yet
-            first_time[x-1] = pos
-        else:
-            # second time found, update the lookup
-            lookup[first_time[x-1]] = pos
-            lookup[pos] = first_time[x-1]
+    for label, edge, color in sorted(zip(
+        pd_code_edge_labels, edges, edge_colors, 
+        strict=True
+    )):
+        sorted_edges.append(edge)
+        sorted_edge_colors.append(color)
+
+    # convert to tensors
+    nodes              = format_for_pytorch_geo(orientations,        new_shape=(1,-1), new_type=torch.float)
+    sorted_edges       = format_for_pytorch_geo(sorted_edges,                          new_type=torch.long )
+    sorted_edge_colors = format_for_pytorch_geo(sorted_edge_colors,  new_shape=(1,-1), new_type=torch.float)
+
+    # instantiate the graph
+    graph = tg.data.Data(
+        edge_index=sorted_edges,
+        edge_attr=sorted_edge_colors,
+        x=nodes,
+        pd_code=pd_code,
+        faces=faces_from_pd_code(pd_code)
+    )
+
+    # check there's no mistakes
+    graph.validate(raise_on_error=True)
     
-    # sanity check
-    if None in lookup:
-        raise Exception("Malformed PD code detected")
+    return graph
 
-    return lookup
-
-# takes in a PD code and calculates the orientation of each node
-# this is called the Shields algorithm in my masters notes
-# the algorithm is explained in more detail there
-def calculate_orientations(code, other_occurrance_table=None):
-    # initialise the directions array
-    directions = [None for x in code]
-
-    n_nodes = len(code)//4
-
-    for x in range(n_nodes):
-        directions[4*x] = -1
-        directions[4*x+2] = 1
-    
-    # calculate the other occurance table if it was not provided
-    if other_occurrance_table == None:
-        other_occurrance_table = get_other_occurrance_table(code)
-
-    # calculate the unknown orientations
-    iterations = 0
-    while None in directions:
-        iterations += 1
-
-        for x in range(n_nodes):
-            # get indexes of the over symbols
-            # using slightly different notation to the notes
-            odd_index_1 = 4*x+1
-            odd_index_2 = 4*x+3
-
-            # gets the (possibly) known direction of the other end of the edge
-            odd_1_other = directions[other_occurrance_table[odd_index_1]]
-            odd_2_other = directions[other_occurrance_table[odd_index_2]]
-
-            # update the directions if possible
-            if odd_1_other is not None:
-                directions[odd_index_1] = -odd_1_other
-
-            if odd_2_other is not None:
-                directions[odd_index_2] = -odd_2_other
-
-            if directions[odd_index_2] is not None:
-                directions[odd_index_1] = -directions[odd_index_2]
-
-            if directions[odd_index_1] is not None:
-                directions[odd_index_2] = -directions[odd_index_1]
-
-        if iterations > SHIELDS_MAX_ITERATIONS:
-            raise Exception(f"Exceeded max iterations.\ndirections was {directions}.\ncode was {code}.")
-
-    # extract the orientations
-    orientations = [directions[4*x+1] for x in range(n_nodes)]
-    return orientations
-
-# takes in the processes data from the RDF file and converts them to Garbali graphs
 def get_graphs(knots):
+    """
+        Takes in the processed data from the RDF file and converts them to Garbali graphs.
+    """
+
     graphs = []
 
     # read all the PD codes
@@ -215,90 +225,21 @@ def get_graphs(knots):
         code = knot[PD_CODE]
         sym_type = knot[SYM_TYPE]
 
-        edges = []
-        edge_colors = []
-
-        # calculate the other occurrance table
-        other_occurrance_table = get_other_occurrance_table(code)
-        orientations = calculate_orientations(code, other_occurrance_table)
-
-        # build up the graph
-        # see master's notes: the PD to Garbali algorithm
-        # we're using a slight modification where we use the Shields algo for orientations
-        current = 0
-
-        for x in range(max(code)):
-            # find the opposite edge
-            current_node = current//4
-            opposite = 4*current_node + (current+2)%4
-
-            # find where the opposite edge connects to
-            next_one = other_occurrance_table[opposite]
-            next_node = next_one//4
-
-            # work out what the edge color should be
-            # even positions are under, odd are over
-            source_crossing_type = (-1)**(opposite % 2)
-            target_crossing_type = (-1)**(next_one % 2)
-
-            # save the data
-            edges.append((current_node, next_node))
-            edge_colors.append(
-                color_function(source_crossing_type, target_crossing_type)
-            )
-
-            # move to the next one
-            current = next_one
-
-        # convert to tensors
-        edges       = format_for_pytorch_geo(edges,                          new_type=torch.long)
-        nodes       = format_for_pytorch_geo(orientations, new_shape=(1,-1), new_type=torch.float)
-        edge_colors = format_for_pytorch_geo(edge_colors,  new_shape=(1,-1), new_type=torch.float)
-
-        # instantiate the graph
-        graph = tg.data.Data(
-            edge_index=edges,
-            edge_attr=edge_colors,
-            x=nodes,
-            knot_id=knot_id
-        )
-
-        # check there's no mistakes
-        graph.validate(raise_on_error=True)
-
-        # generate non-equivalent graphs depending on symmetry type
+        # generate non-equivalent codes depending on symmetry type
         variants = []
 
-        transformations_to_do = NEEDED_TRANSFORMS[sym_type]
+        transformations_to_do = NEEDED_PD_TRANSFORMS[sym_type]
         
-        if len(transformations_to_do) == 1:
-            # it's just the identity
-            variants = [graph]
-        else:
-            for pos, transform in enumerate(transformations_to_do):
-                new_graph = transform(
-                    graph,
+        # compute the transformed codes
+        for transform in transformations_to_do:
+            variants.append(transform(code))
 
-                    edges_start_transposed=False,
-                    edges_should_end_transposed=False,
-                    graph_has_been_cloned=False
-                )
-                
-                new_graph.knot_id = f"{graph.knot_id} v{pos+1}"
-                assert(new_graph is not graph)
-                variants.append(new_graph)
+        # compute the associated graphs
+        for number, code in enumerate(variants):
+            graph = graph_from_pd_code(code)
+            graph.knot_id = f"{knot_id} v{number+1}"
 
-        #calculate faces for all the variants
-        for variant in variants:
-            update_face_cache(
-                variant,
+            # save the graph
+            graphs.append(graph)
 
-                edges_start_transposed=False,
-                edges_should_end_transposed=False,
-                graph_has_been_cloned=True # want to mutate it
-            )
-        
-        # save the graphs
-        graphs += variants
-    
     return graphs
