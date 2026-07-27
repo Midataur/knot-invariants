@@ -55,7 +55,7 @@ def pd_twist(pd_code, edge_label: int, over_under: int, node_sign: int):
     pd_code[incoming_pos] = out_label
     pd_code[outgoing_pos] = in_label
 
-    return reindex_code(pd_code)
+    return pd_code
 
 def pd_untwist(pd_code, node_number):
     """
@@ -63,9 +63,7 @@ def pd_untwist(pd_code, node_number):
 
         `node_number` should be zero-indexed.
 
-        This follows the conventions in the masters notes,
-        and assumes that the twisting was done by pd_twist
-        (hence there are implicit conventions about edge labelling).
+        This follows the conventions in the masters notes.
     """
 
     # copy the code
@@ -74,10 +72,24 @@ def pd_untwist(pd_code, node_number):
     # delete the node
     pd_code, node_group = delete_node(pd_code, node_number)
 
-    # find the in and out edge labels
-    # asssumes the conventions in pd_twist
-    in_label = min(node_group)
-    out_label = max(node_group)
+    # find the in and out edge labels by checking four cases
+    # specifically, check where the loop edge is in the code
+    # format: internal index of  (i, l, o)
+    # index of l is chosen such that (l+1)%4 is the other l
+    OPTIONS = [
+        (0, 1, 3), # case 1 in pd_twist
+        (1, 3, 2), # case 2 in pd_twist
+        (0, 2, 1), # case 3 in pd_twist
+        (3, 0, 2), # case 4 in pd_twist
+    ]
+
+    # check against the cases
+    for i, l, o in OPTIONS:
+        potential_other_l = (l+1)%EDGES_PER_NODE
+        
+        if node_group[l] == node_group[potential_other_l]:
+            in_label, out_label = node_group[i], node_group[o]
+            break
     
     new_label = next_free_edge_label(pd_code)
 
@@ -90,7 +102,7 @@ def pd_untwist(pd_code, node_number):
         else:
             new_code.append(item)
 
-    return reindex_code(new_code)
+    return new_code
 
 # @prep_graph(wants_edges_transposed=False, will_mutate_graph=True)
 # def graph_swap_twist(graph):
@@ -133,15 +145,11 @@ def pd_untwist(pd_code, node_number):
 
 
 
-
-
 """
     The functions below are the 4 natural actions of Z/2Z on a knot diagram.
 
     They take in a pd code and apply the transform.
 """
-
-
 
 
 

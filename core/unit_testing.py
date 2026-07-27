@@ -5,14 +5,12 @@ from graph_transformations import *
 from pd_functions import *
 from pd_transformations import *
 import torch
-import torch.testing
 import unittest
 import time
 import processing
 import graph_transformations as graph_transformations
 
-# tests the transformation code
-class TestTransformations(unittest.TestCase):
+class MainTests(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         # get graphs
@@ -35,7 +33,7 @@ class TestTransformations(unittest.TestCase):
             as what we really care about is equality up to edge relabelling.
 
             One way we can test for this type of equivalence is to put both
-            codes into canonical form, and then compare them; this method does so.
+            codes into canonical form, and then compare them. This is what this method does.
         """
 
         self.assertListEqual(
