@@ -2,6 +2,7 @@ from collections import defaultdict as dd
 from utilities import *
 
 SHIELDS_MAX_ITERATIONS = 100_000
+EDGE_PLACEHOLDER = -float("inf")
 
 def faces_from_pd_code(pd_code):
     """
@@ -177,3 +178,57 @@ def pd_edge_positions(pd_code, edge_label):
                 outgoing_pos = index
     
     return incoming_pos, outgoing_pos
+
+def next_free_edge_label(pd_code):
+    """
+        Takes in a pd_code and gives the next free edge label.
+
+        This is just a more readable alias for max + 1.
+    """
+
+    return max(pd_code) + 1
+
+def reindex_code(pd_code):
+    """
+        Takes in a pd_code and a deleted label.
+
+        Reindexes the edge labels to be zero-indexed and consecutive.
+    """
+
+    # list --> set --> list removes duplicates
+    current_labels = sorted(list(set(pd_code)))
+
+    return [current_labels.index(x) for x in pd_code]
+
+def delete_node(pd_code, node_number):
+    """
+        Deletes a node group from the code and reindexes the edges.
+
+        Returns the new pd code and the deleted node group.
+    """
+
+    # get the node group to be deleted
+    node_group_index = EDGES_PER_NODE * node_number
+    node_group = pd_code[node_group_index:node_group_index+EDGES_PER_NODE]
+
+    # remove the node from the code
+    pd_code = pd_code[:node_group_index] + pd_code[node_group_index+EDGES_PER_NODE:]
+
+    return pd_code, node_group
+
+def to_canonical_form(pd_code):
+    """
+        Relabels a pd code to be "first come
+        first served", ie. edges are labeled in
+        the order the occur in the code.
+    """
+
+    # get the occurance order
+    occurance_order = []
+
+    for label in pd_code:
+        if label not in occurance_order:
+            occurance_order.append(label)
+
+    # reorder the code
+    return [occurance_order.index(x) for x in pd_code]

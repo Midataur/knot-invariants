@@ -13,8 +13,6 @@ from pd_functions import *
     The functions below are the reidermeister moves, but for pd codes.
 """
 
-PLACEHOLDER = -float("inf")
-
 def pd_twist(pd_code, edge_label: int, over_under: int, node_sign: int):
     """
         Twists an untwisted edge, adds a crossing.
@@ -31,12 +29,11 @@ def pd_twist(pd_code, edge_label: int, over_under: int, node_sign: int):
     # delete s from the code
     # ie. decrement all higher edges
     # and remove references to s
-    pd_code[incoming_pos] = PLACEHOLDER
-    pd_code[outgoing_pos] = PLACEHOLDER
-    pd_code = [x-1 if x is not PLACEHOLDER and x>edge_label else x for x in pd_code]
+    pd_code[incoming_pos] = EDGE_PLACEHOLDER
+    pd_code[outgoing_pos] = EDGE_PLACEHOLDER
 
     # get the labels of the new edges
-    in_label = max(pd_code) + 1
+    in_label = next_free_edge_label(pd_code)
     loop_label = in_label + 1
     out_label = loop_label + 1
     
@@ -58,79 +55,42 @@ def pd_twist(pd_code, edge_label: int, over_under: int, node_sign: int):
     pd_code[incoming_pos] = out_label
     pd_code[outgoing_pos] = in_label
 
-    return pd_code
+    return reindex_code(pd_code)
 
-# @prep_graph(wants_edges_transposed=True, will_mutate_graph=True)
-# def graph_untwist(graph, node_index):
-#     """
-#         Untwists a twisted edge, removes a crossing.
-#     """
+def pd_untwist(pd_code, node_number):
+    """
+        Untwists a twisted edge, removes a crossing.
 
-#     if graph.x.shape[0] <= node_index:
-#         raise Exception("Node index out of bounds.")
+        `node_number` should be zero-indexed.
+
+        This follows the conventions in the masters notes,
+        and assumes that the twisting was done by pd_twist
+        (hence there are implicit conventions about edge labelling).
+    """
+
+    # copy the code
+    pd_code = list(pd_code)
+
+    # delete the node
+    pd_code, node_group = delete_node(pd_code, node_number)
+
+    # find the in and out edge labels
+    # asssumes the conventions in pd_twist
+    in_label = min(node_group)
+    out_label = max(node_group)
     
-#     # find the attached edges
-#     loop = None
-#     incoming = None
-#     outgoing = None
+    new_label = next_free_edge_label(pd_code)
 
-#     for pos, edge in enumerate(graph.edge_index):
-#         # check if the edge relates to the node
-#         if node_index not in edge:
-#             continue
-        
-#         # figure out what kind of edge this is
-#         source, target = edge
+    # connect the new edge
+    new_code = []
 
-#         if source != node_index:
-#             # it's the incoming edge
-#             incoming = pos
-#             prenode = source
-#             precolor = inverse_color_function(
-#                 graph.edge_attr[pos]
-#             )[0]
-#         elif target != node_index:
-#             # it's the outgoing edge
-#             outgoing = pos
-#             postnode = target
-#             postcolor = inverse_color_function(
-#                 graph.edge_attr[pos]
-#             )[1]
-#         else:
-#             # it's the loop
-#             loop = pos
+    for item in pd_code:
+        if item == in_label or item == out_label:
+            new_code.append(new_label)
+        else:
+            new_code.append(item)
 
-#     # check that this is actually untwistable
-#     if loop is None or incoming is None or outgoing is None:
-#         raise Exception(
-#             f"Node is not untwistable: loop is {loop}, incoming is {incoming}, and outgoing is {outgoing}."
-#         )
-
-#     graph_prep_state = GraphPrepState(
-#         edges_start_transposed=True,
-#         edges_should_end_transposed=True,
-#         graph_has_been_cloned=True
-#     )
-    
-#     # delete the edges and the node
-#     batch_delete(
-#         graph, 
-#         node_indices=[node_index], 
-#         edge_indices=[loop, incoming, outgoing],
-
-#         **graph_prep_state._asdict()
-#     )
-
-#     # add the new edge
-#     add_edges(
-#         graph, 
-#         new_edges=[(prenode, postnode)],
-#         new_colors=[color_function(precolor, postcolor)],
-
-#         **graph_prep_state._asdict()
-#     )
-
-#     return graph
+    return reindex_code(new_code)
 
 # @prep_graph(wants_edges_transposed=False, will_mutate_graph=True)
 # def graph_swap_twist(graph):
