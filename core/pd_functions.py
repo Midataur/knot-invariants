@@ -97,9 +97,11 @@ def calculate_orientations(code, other_occurrance_table=None, return_directions=
         This is called the Shields algorithm in my masters notes.
         The algorithm is explained in more detail there.
 
-        If return_raw is set to true, returns the directions 
+        If return_direction is set to true, returns the directions 
         list instead of the orientations (sub)list.
-        TODO: split this functionality into its own function.
+        
+        The directions list tells you whether a given position in the code
+        represents an incoming or an outgoing edge.
     """
 
     # initialise the directions array
@@ -179,14 +181,21 @@ def pd_edge_positions(pd_code, edge_label):
     
     return incoming_pos, outgoing_pos
 
-def next_free_edge_label(pd_code):
+def next_free_edge_label(pd_code, amount=1):
     """
         Takes in a pd_code and gives the next free edge label.
 
         This is just a more readable alias for max + 1.
+
+        If amount = n > 1, gives the list of next n available.
     """
 
-    return max(pd_code) + 1
+    next_avail = max(pd_code) + 1
+
+    if amount == 1:
+        return next_avail
+    
+    return [next_avail + x for x in range(amount)]
 
 def reindex_code(pd_code):
     """
@@ -232,3 +241,70 @@ def to_canonical_form(pd_code):
 
     # reorder the code
     return [occurance_order.index(x) for x in pd_code]
+
+def get_ordered_face(pd_code, start_pos, direction, force_edge_relative=False):
+    """
+        Takes a pd code, an starting position, and a face direction (LEFT/RIGHT).
+
+        Returns the ordered face + the relative direction of
+        each edge to the first edge as a dictionary.
+
+        By default this function assumes that "left" means the edge to
+        the left if the specified starting node is above the starting edge.
+        If `force_edge_relative` is set to `True`, then the convention is
+        to have the edge pointing upwards (in the traversal direction sense).
+    """
+
+    # get some helper lists
+    other_occurance_table = get_pd_other_occurrance_table(pd_code)
+    directions = calculate_orientations(
+        pd_code, 
+        return_directions=True,
+        other_occurrance_table=other_occurance_table
+    )
+
+    # set up starting config
+    face = dict()
+    cur_pos = start_pos
+    start_edge_direction = directions[start_pos]
+
+    if start_edge_direction == REVERSED and force_edge_relative:
+        # need to directions
+        return get_ordered_face(
+            pd_code, 
+            other_occurance_table[start_pos],
+            direction,
+            force_edge_relative
+        )
+
+    relative_traversal_direction = STANDARD
+
+    while True:
+        # get current edge label
+        cur_edge = pd_code[cur_pos]
+
+        # add the current edge + the relative direction
+        face[cur_edge] = relative_traversal_direction
+
+        # turn in the appropriate direction
+        cur_node = cur_pos//EDGES_PER_NODE
+        pos_in_node = cur_pos%EDGES_PER_NODE
+        next_side = (pos_in_node + direction)%EDGES_PER_NODE + cur_node*EDGES_PER_NODE
+        
+        # go to the other occurance
+        cur_pos = other_occurance_table[next_side]
+
+        # get the new traversal direction.
+
+        # if the next edge is leaving the node, then we're
+        # following it in the normal direction. otherwise,
+        # we're following it in the opposite direction.
+        
+        # then, we multiply by start_edge_direction to get relative direction
+        direction_at_node = directions[next_side] # inc/out
+        relative_traversal_direction = start_edge_direction*direction_at_node
+
+        if cur_pos == start_pos:
+            break
+
+    return face

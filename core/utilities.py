@@ -181,3 +181,14 @@ def show_list_diff(list1, list2):
     
     print(display1[:-2]+"]")
     print(display2[:-2]+"]")
+
+def cyclic_shift(to_shift, n=1):
+    """
+        Takes a lift and cylicly shifts the lift by n places right.
+
+        By default, n=1.
+    """
+
+    return [
+        to_shift[(x-n)%len(to_shift)] for x in range(len(to_shift))
+    ]

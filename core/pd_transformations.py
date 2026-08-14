@@ -1,5 +1,6 @@
 from utilities import *
 from pd_functions import *
+import utilities
 
 """
     This file contains a lot of the same functions as graph_transformations.py,
@@ -104,34 +105,105 @@ def pd_untwist(pd_code, node_number):
 
     return new_code
 
-# @prep_graph(wants_edges_transposed=False, will_mutate_graph=True)
-# def graph_swap_twist(graph):
-#     """
-#         Swaps a twisted edge.
+def pd_swap_twist(pd_code):
+    """
+        Swaps a twisted edge.
 
-#         Leaves crossing count unchanged.
+        Leaves crossing count unchanged.
 
-#         We need this because you can't go below zero crossings in our formulation.
-#     """
+        We need this because you can't go below zero crossings in our formulation.
+    """
 
-#     if len(graph.x) > 1:
-#         raise Exception("Can only be used on single node graphs")
+    if len(pd_code) > EDGES_PER_NODE:
+        raise Exception("Can only be used on single node codes.")
 
-#     return graph_mirror_knot(
-#         graph,
+    return pd_mirror_knot(pd_code)
 
-#         edges_start_transposed=False,
-#         edges_should_end_transposed=False,
-#         graph_has_been_cloned=True
-#     )
+def pd_poke(pd_code, edge_1_pos, edge_2_pos, parity):
+    """
+        Slides one edge over another. Adds two crossings.
 
-# # slides one edge over another
-# # adds two crossings
-# # this is R2
-# def graph_poke(graph, edge_1, edge_2, parity):
-#     ...
+        This follows the conventions in the masters notes.
 
-# # reverse slides on edge over another
+        `edge_1_pos` and `edge_2_pos` are positions in the pd_code.
+
+        `parity` is +1 if the left edge goes over, -1 otherwise.
+        "The left edge" generally refers to edge 1 if edges are similarly
+        oriented and the genuine left edge if they're oppositely oriented.
+    """
+    
+    # get edge labels
+    edge_1_label = pd_code[edge_1_pos]
+    edge_2_label = pd_code[edge_2_pos]
+
+    # get the relative orientation
+    # check both sides
+    for side in (LEFT, RIGHT):
+        face = get_ordered_face(pd_code, edge_1_pos, side, force_edge_relative=True)
+
+        if edge_2_label in face.keys():
+            relative_orientation = face[edge_2_label]
+            detected_side = side
+            break
+
+    # handle cases in the order of the notes
+    # make sure edge 1 is on the left
+    tau = None
+    match relative_orientation, detected_side:
+        case utilities.REVERSED, utilities.LEFT:
+            # whoops, the edges should be the other way around
+            return pd_poke(pd_code, edge_2_pos, edge_1_pos, parity)
+        case utilities.STANDARD, utilities.RIGHT:
+            tau =  1
+        case utilities.STANDARD, utilities.LEFT:
+            tau = -1
+
+    # get new edge labels
+    # see picture in masters notes
+    i1, i2, p1, p2, o1, o2 = next_free_edge_label(
+        pd_code, amount=6
+    )
+
+    # get the two new nodes
+
+    # there's a bunch of possible combinations.
+    # they don't seem to simplify too nicely.
+    # hence, big piecewise function (see notes).
+    # there's no nicer way to do this than drawing the picture 
+    # (at least, that i know of).
+
+    # here we assume d = +1, we fix it later
+    match relative_orientation, tau:
+        case  1,  _: # case 1
+            node1 = [p2, p1, o2, o1]
+            node2 = [i2, p1, p2, i1]
+        case -1,  1: # case 3
+            node1 = [i2, o1, p2, p1]
+            node2 = [p2, i1, o2, p1]
+        case -1, -1: # case 5
+            node1 = [p2, p1, o2, i1]
+            node2 = [i2, p1, p2, o1]
+
+    # (maybe) swap the crossings
+    # derivation in the masters notes
+    if parity == -1:
+        node1 = cyclic_shift(node1, -relative_orientation*parity)
+        node2 = cyclic_shift(node2,  relative_orientation*parity)
+
+    # get the connection points
+    edge_1_in, edge_1_out = pd_edge_positions(pd_code, edge_1_label)
+    edge_2_in, edge_2_out = pd_edge_positions(pd_code, edge_2_label)
+
+    # add the new nodes and stitch them in
+    new_code = list(pd_code) + node1 + node2
+    new_code[edge_1_in] = o1
+    new_code[edge_1_out] = i1
+    new_code[edge_2_in] = o2
+    new_code[edge_2_out] = i2
+
+    return new_code
+
+# # reverse slides one edge over another
 # # removes two crossings
 # # this is R2^{-1}
 # def graph_unpoke(graph, edge_1, edge_2):
