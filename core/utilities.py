@@ -192,3 +192,18 @@ def cyclic_shift(to_shift, n=1):
     return [
         to_shift[(x-n)%len(to_shift)] for x in range(len(to_shift))
     ]
+
+def unzip(iterable, num_lists_expected=2):
+    """
+        The inverse of the default python zip function.
+
+        Returns a list of lists.
+    """
+
+    final_lists = [[] for x in range(num_lists_expected)]
+
+    for item in iterable:
+        for pos, x in enumerate(item):
+            final_lists[pos].append(x)
+
+    return final_lists

@@ -86,7 +86,7 @@ def get_pd_other_occurrance_table(code):
     
     # sanity check
     if None in lookup:
-        raise Exception("Malformed PD code detected")
+        raise Exception(f"Malformed PD code detected: {code}")
 
     return lookup
 
@@ -160,11 +160,11 @@ def pd_edge_positions(pd_code, edge_label):
     """
         Takes in a pd code and an edge_label.
 
-        Returns (i, o), where:
-            
-        i is the index in the code where the edge is incoming.
-        
-        o is the index where the edge is outgoing.
+        Returns (o, i), where 
+        `o` is the index where the edge is outgoing and 
+        `i` is the index in the code where the edge is incoming.
+
+        Alternately, this is (start, end).
     """
 
     # get the directions of each position in the code
@@ -179,7 +179,7 @@ def pd_edge_positions(pd_code, edge_label):
             else:
                 outgoing_pos = index
     
-    return incoming_pos, outgoing_pos
+    return outgoing_pos, incoming_pos
 
 def next_free_edge_label(pd_code, amount=1):
     """
@@ -308,3 +308,72 @@ def get_ordered_face(pd_code, start_pos, direction, force_edge_relative=False):
             break
 
     return face
+
+def crossing_type_from_index(index):
+    """
+        Returns if the index represents an under or
+        an over crossing in a pd code.
+
+        Note: this doesn't depend on the code, only on
+        the value of the index mod 2.
+    """
+
+    match index % 2:
+        case 0:
+            return UNDERCROSSING
+        case 1:
+            return OVERCROSSING
+    
+    raise Exception("This state should be unreachable")
+        
+def opposite_index(index):
+    """
+        Takes in an index, returns the index that repesents
+        the opposite side of the crossing. This will be the index
+        of the pre/post edge.
+    """
+
+    node_number = index//EDGES_PER_NODE
+    internal_index = index%EDGES_PER_NODE
+
+    opposite_internal = (internal_index + EDGES_PER_NODE//2)%EDGES_PER_NODE
+
+    return node_number*EDGES_PER_NODE + opposite_internal
+
+def yb_construct_crossing(intersection, strings):
+    """
+        Takes in an intersection, performs a Yang-Baxter move,
+        then gives the new crossing.
+
+        Returns `(crossing, start_index)`.
+    """
+
+    # unpack values
+    intersection_order, node_sign, node_number = intersection
+    string1, string2 = strings
+
+    # perform the yang-baxter (reverse the intersection order)
+    intersection_order = intersection_order[::-1]
+
+    # get the relevant edges
+    # the first edge is always the same
+    edge1 = string1[intersection_order[0]]
+    
+    # similarly, the 3rd edge is always the same
+    edge3 = string1[intersection_order[0]+1]
+
+    # the other two depend on the sign
+    match node_sign:
+        case 1:
+            # string 2 is running left to right
+            edge2 = string2[intersection_order[1]+1]
+            edge4 = string2[intersection_order[1]]
+        case -1:
+            # string 2 is running right to left
+            edge2 = string2[intersection_order[1]]
+            edge4 = string2[intersection_order[1]+1]
+    
+    crossing = (edge1, edge2, edge3, edge4)
+    start_index = node_number*EDGES_PER_NODE
+
+    return crossing, start_index

@@ -1,6 +1,7 @@
 from utilities import *
 from pd_functions import *
 import utilities
+import itertools
 
 """
     This file contains a lot of the same functions as graph_transformations.py,
@@ -25,7 +26,7 @@ def pd_twist(pd_code, edge_label: int, over_under: int, node_sign: int):
     pd_code = list(pd_code)
 
     # find where the edge is referenced
-    incoming_pos, outgoing_pos = pd_edge_positions(pd_code, edge_label)
+    outgoing_pos, incoming_pos = pd_edge_positions(pd_code, edge_label)
 
     # delete s from the code
     # ie. decrement all higher edges
@@ -138,13 +139,18 @@ def pd_poke(pd_code, edge_1_pos, edge_2_pos, parity):
 
     # get the relative orientation
     # check both sides
+    found = False
     for side in (LEFT, RIGHT):
         face = get_ordered_face(pd_code, edge_1_pos, side, force_edge_relative=True)
 
         if edge_2_label in face.keys():
             relative_orientation = face[edge_2_label]
             detected_side = side
+            found = True
             break
+
+    if not found:
+        raise Exception("Did not find edge2 in either edge1 face.")
 
     # handle cases in the order of the notes
     # make sure edge 1 is on the left
@@ -191,8 +197,8 @@ def pd_poke(pd_code, edge_1_pos, edge_2_pos, parity):
         node2 = cyclic_shift(node2,  relative_orientation*parity)
 
     # get the connection points
-    edge_1_in, edge_1_out = pd_edge_positions(pd_code, edge_1_label)
-    edge_2_in, edge_2_out = pd_edge_positions(pd_code, edge_2_label)
+    edge_1_out, edge_1_in = pd_edge_positions(pd_code, edge_1_label)
+    edge_2_out, edge_2_in = pd_edge_positions(pd_code, edge_2_label)
 
     # add the new nodes and stitch them in
     new_code = list(pd_code) + node1 + node2
@@ -203,17 +209,189 @@ def pd_poke(pd_code, edge_1_pos, edge_2_pos, parity):
 
     return new_code
 
-# # reverse slides one edge over another
-# # removes two crossings
-# # this is R2^{-1}
-# def graph_unpoke(graph, edge_1, edge_2):
-#     ...
+def pd_unpoke(pd_code, node_1_number, node_2_number):
+    """
+        Takes two strands that cross without intertwining and seperates them.
+        Assumes that there is a genuine poke going on, may break otherwise.
 
-# # yang-baxters
-# # does not change crossings
-# # lhs to rhs in the mathworld image
-# def graph_yang_baxter(graph, edge_1, edge_2):
-#     ...
+        This follows the conventions in the masters notes.
+    """
+
+    # ensure node1 is earlier than node2
+    if node_1_number > node_2_number:
+        return pd_unpoke(pd_code, node_2_number, node_1_number)
+
+    # get the two node indices
+    node_1_index = EDGES_PER_NODE*node_1_number
+    node_2_index = EDGES_PER_NODE*node_2_number
+
+    node1 = pd_code[node_1_index:node_1_index+EDGES_PER_NODE]
+    node2 = pd_code[node_2_index:node_2_index+EDGES_PER_NODE]
+
+    # get the directions of each edge
+    directions = calculate_orientations(pd_code, return_directions=True)
+
+    # figure out what the connecting edges are
+    # these are the two that are shared between the nodes
+    shared_edges = set(node1).intersection(set(node2))
+
+    # get two new edge labels
+    string1_label, string2_label = next_free_edge_label(pd_code, 2)
+
+    # look at the first edge in each node
+    # this will be the start of a string or a connecting edge
+    # if it's a start, the end of that string will be third in the other node
+    if node1[0] not in shared_edges:
+        string1 = (node1[0], node2[2])
+    else:
+        string1 = (node2[0], node1[2])
+    
+    # get the other string
+    all_edges = set(node1+node2)
+    seen_already = set(string1).union(shared_edges)
+    string2 = tuple(all_edges.difference(seen_already))
+
+    # delete the nodes
+    new_code = (
+          pd_code[:node_1_index]
+        + pd_code[node_1_index+EDGES_PER_NODE:node_2_index]
+        + pd_code[node_2_index+EDGES_PER_NODE:]
+    )
+
+    # stitch the broken edges
+    for pos in range(len(new_code)):
+        if new_code[pos] in string1:
+            new_code[pos] = string1_label
+        elif new_code[pos] in string2:
+            new_code[pos] = string2_label
+    
+    return new_code
+    
+
+
+def pd_yang_baxter(pd_code, triangle):
+    """
+        The third Reidermeister move.
+        Does not change the crossing count.
+        This move is its own inverse.
+
+        `triangle` should be a list of three integers,
+        the labels of the three edges in the triangle.
+    """
+
+    # duplicate list to avoid mutations
+    pd_code = list(pd_code)
+
+    ### INFORMATION STAGE ###
+
+    # sanity check
+    assert len(triangle) == 3
+
+    # get indices where the edge occurs
+    edge_positions = [pd_edge_positions(pd_code, edge) for edge in triangle]
+
+    # figure out height levels
+    # one will be strictly under (-2)
+    # one will be in the middle (0)
+    # and one will be strictly over (2)
+    # the specific values don't matter, only the order
+    height_levels = [
+        crossing_type_from_index(source) + crossing_type_from_index(target)
+        for source, target in edge_positions
+    ]
+
+    # sanity check
+    assert sorted(height_levels) == [-2, 0, 2]
+
+    # sort everything by height
+    height_levels, triangle, edge_positions = unzip(sorted(zip(
+        height_levels, triangle, edge_positions
+    )), num_lists_expected=3)
+
+    # everything is now in the order U, M, O
+    # (under, middle, over)
+
+    # assemble the full strings
+    # ie. the pre-edge, the edge, and the post-edge
+    strings = []
+
+    for label, edge in zip(triangle, edge_positions):
+        # unpack values
+        start, end = edge
+
+        # get front, middle, and back of the string
+        middle = label
+
+        front_index = opposite_index(start)
+        front = pd_code[front_index]
+
+        back_index = opposite_index(end)
+        back = pd_code[back_index]
+
+        strings.append((front, middle, back))
+
+    orientations = calculate_orientations(pd_code)
+
+    # get the intersection data
+    # order will be [U ∩ M, U ∩ O, M ∩ O]
+    intersections = []
+    for edge1, edge2 in itertools.combinations(edge_positions, 2):
+        source1, target1 = edge1
+        source2, target2 = edge2
+
+        # find what the node number of the intersection is
+        # and what the intersection order is
+
+        string1_first   = source1//EDGES_PER_NODE
+        string1_second  = target1//EDGES_PER_NODE
+        string2_first   = source2//EDGES_PER_NODE
+        string2_second  = target2//EDGES_PER_NODE
+
+        # case bashing time!
+        # note: we're zero indexing bc it's nicer in code
+        if string1_first == string2_first:
+            node_number = string1_first
+            intersection_order = (0, 0)
+
+        elif string1_first == string2_second:
+            node_number = string1_first
+            intersection_order = (0, 1)
+
+        elif string1_second == string2_first:
+            node_number = string1_second
+            intersection_order = (1, 0)
+
+        elif string1_second == string2_second:
+            node_number = string1_second
+            intersection_order = (1, 1)
+
+        else:
+            raise Exception(f"""This state should be unreachable. Values observed: {
+                source1, source2, target1, target2
+            }""")
+    
+        node_sign = orientations[node_number]
+
+        intersections.append((intersection_order, node_sign, node_number))
+    
+    ### MODIFICATION STAGE
+
+    # modify the code
+
+    for intersection, strings in zip(
+        intersections,
+        itertools.combinations(strings, 2)
+    ):
+        # get the new crossing
+        crossing, start_index = yb_construct_crossing(intersection, strings)
+        
+        # overwrite the old crossing
+        for pos, x in enumerate(crossing):
+            pd_code[start_index+pos] = x
+        
+    # done!
+    return pd_code
+
 
 
 

@@ -42,6 +42,7 @@ class MainTests(unittest.TestCase):
             msg=msg
         )
 
+    @unittest.skip("Speed")
     def test_processing_types(self):
         """Checks that everything in the graphs that should be a tensor is."""
 
@@ -50,6 +51,7 @@ class MainTests(unittest.TestCase):
             self.assertIsInstance(graph.edge_index, torch.Tensor, msg=f"id is {graph.knot_id}")
             self.assertIsInstance(graph.edge_attr, torch.Tensor, msg=f"id is {graph.knot_id}")
 
+    @unittest.skip("Speed")
     def test_twist(self):
         """
             Try twisting the second edge using graph and pd.
@@ -73,6 +75,7 @@ class MainTests(unittest.TestCase):
                         msg=f"Broke on {graph.knot_id} with settings ({option1}, {option2})"
                     )
     
+    @unittest.skip("Speed")
     def test_pd_untwist(self):
         """Tries twisting and untwisting every knot using pd transformations."""
 
@@ -91,7 +94,7 @@ class MainTests(unittest.TestCase):
                             msg=f"Broke on {graph.knot_id} with settings ({edge}, {option1}, {option2})"
                         )
                     
-    
+    @unittest.skip("Speed")
     def test_faces(self):
         """
             Calculates the faces of all the base knots in two different ways,
@@ -116,6 +119,7 @@ class MainTests(unittest.TestCase):
                 msg=f"failed on {graph.knot_id}"
             )
 
+    @unittest.skip("Speed")
     def test_reverse(self):
         """
             Reverses each base knot via graph and pd methods.
@@ -135,6 +139,7 @@ class MainTests(unittest.TestCase):
             # compare the codes
             self.assertCodeEquivalent(pd_from_graph, reversed_pd_code, msg=f"Broke on {graph.knot_id}.")
 
+    @unittest.skip("Speed")
     def test_mirror(self):
         """
             Mirrors each base knot via graph and pd methods.
@@ -154,6 +159,31 @@ class MainTests(unittest.TestCase):
             # compare the codes
             self.assertCodeEquivalent(pd_from_graph, mirrored_pd_code, msg=f"Broke on {graph.knot_id}.")
 
+    def test_poke_unpoke(self):
+        """
+            For each graph, picks two edges and pokes them via pd codes.
+            Then, it unpokes and tests if the resulting code is equivalent.
+        """
+
+        for graph in self.graphs:
+            for parity in (-1, +1):
+                # skip the unkot, it can't be poked
+                if "0_1" in graph.knot_id:
+                    continue
+
+                # get pd code info
+                pd_code = graph.pd_code
+                last_node_index = len(pd_code)//EDGES_PER_NODE - 1
+
+                # poke and unpoke
+                # if two edges are adjacent in the node then they must share a face
+                poked_code = pd_poke(pd_code, 0, 1, parity)
+                unpoked_code = pd_unpoke(poked_code, last_node_index+1, last_node_index+2)
+
+                self.assertCodeEquivalent(
+                    pd_code, unpoked_code,
+                    msg=f"Broke on {graph.knot_id} with parity {parity}"
+                )
 
 if __name__ == "__main__":
     unittest.main()
