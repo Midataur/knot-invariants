@@ -1,8 +1,8 @@
 # a bunch of unit tests to make sure that everything is correct
-from pd_functions import faces_from_pd_code
+from pd_utils import faces_from_pd_code
 from graph_functions import *
 from graph_transformations import *
-from pd_functions import *
+from pd_utils import *
 from pd_transformations import *
 import torch
 import unittest
@@ -37,8 +37,8 @@ class MainTests(unittest.TestCase):
         """
 
         self.assertListEqual(
-            to_canonical_form(code1),
-            to_canonical_form(code2),
+            pd_canonical_form(code1),
+            pd_canonical_form(code2),
             msg=msg
         )
 
@@ -65,7 +65,7 @@ class MainTests(unittest.TestCase):
             for option1 in (UNDERCROSSING, OVERCROSSING):
                 for option2 in (-1, 1):
                     via_graph_twist = graph_twist(graph, TO_TWIST, option1, option2, **SUPPRESSED_DEFAULT._asdict())
-                    via_pd_twist = pd_twist(graph.pd_code, TO_TWIST, option1, option2)
+                    via_pd_twist = twist(graph.pd_code, TO_TWIST, option1, option2)
 
                     # compare the codes
                     code_from_graph_twist = get_pd_code_from_graph(via_graph_twist, **SUPPRESSED_DEFAULT._asdict())
@@ -84,9 +84,9 @@ class MainTests(unittest.TestCase):
                 for option2 in (-1, 1):
                     for edge in range(graph.edge_attr.shape[0]):
                         # twist and untwist
-                        twisted = pd_twist(graph.pd_code, edge, option1, option2)
+                        twisted = twist(graph.pd_code, edge, option1, option2)
                         new_node_index = len(twisted)//EDGES_PER_NODE - 1
-                        untwisted = pd_untwist(twisted, new_node_index)
+                        untwisted = untwist(twisted, new_node_index)
 
                         # compare the codes
                         self.assertCodeEquivalent(
@@ -134,7 +134,7 @@ class MainTests(unittest.TestCase):
 
             # reverse using pd methods
             pd_code = graph.pd_code
-            reversed_pd_code = pd_reverse_knot(pd_code)
+            reversed_pd_code = reverse_knot(pd_code)
 
             # compare the codes
             self.assertCodeEquivalent(pd_from_graph, reversed_pd_code, msg=f"Broke on {graph.knot_id}.")
@@ -154,7 +154,7 @@ class MainTests(unittest.TestCase):
 
             # reverse using pd methods
             pd_code = graph.pd_code
-            mirrored_pd_code = pd_mirror_knot(pd_code)
+            mirrored_pd_code = mirror_knot(pd_code)
 
             # compare the codes
             self.assertCodeEquivalent(pd_from_graph, mirrored_pd_code, msg=f"Broke on {graph.knot_id}.")
@@ -177,8 +177,8 @@ class MainTests(unittest.TestCase):
 
                 # poke and unpoke
                 # if two edges are adjacent in the node then they must share a face
-                poked_code = pd_poke(pd_code, 0, 1, parity)
-                unpoked_code = pd_unpoke(poked_code, last_node_index+1, last_node_index+2)
+                poked_code = poke(pd_code, 0, 1, parity)
+                unpoked_code = unpoke(poked_code, last_node_index+1, last_node_index+2)
 
                 self.assertCodeEquivalent(
                     pd_code, unpoked_code,

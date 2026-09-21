@@ -1,5 +1,5 @@
 from torch_geometric.data import InMemoryDataset, download_url, DataLoader
-from core.processing import get_knots, get_graphs
+from processing import get_knots, get_graphs
 import gzip
 import os
 

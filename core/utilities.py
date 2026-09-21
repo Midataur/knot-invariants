@@ -1,5 +1,6 @@
 from accelerate import load_checkpoint_and_dispatch
 from collections import defaultdict as dd
+from collections.abc import Iterable
 import torch
 import model_types
 import pickle
@@ -96,7 +97,7 @@ def format_for_pytorch_geo(to_format, new_shape=None, new_type=torch.float):
     
     return tensor.t().contiguous().type(new_type)
 
-def size_signature(set_to_count):
+def size_signature(set_to_count: set):
     """
         Takes in a set of tuples.
 
@@ -158,7 +159,7 @@ def reverse_edge_color(color: int):
     
     return color
 
-def show_list_diff(list1, list2):
+def show_list_diff(list1: list, list2: list):
     """
         Highlights differences between two lists.
 
@@ -182,7 +183,7 @@ def show_list_diff(list1, list2):
     print(display1[:-2]+"]")
     print(display2[:-2]+"]")
 
-def cyclic_shift(to_shift, n=1):
+def cyclic_shift(to_shift: list, n: int = 1):
     """
         Takes a lift and cylicly shifts the lift by n places right.
 
@@ -193,7 +194,7 @@ def cyclic_shift(to_shift, n=1):
         to_shift[(x-n)%len(to_shift)] for x in range(len(to_shift))
     ]
 
-def unzip(iterable, num_lists_expected=2):
+def unzip(iterable: Iterable, num_lists_expected: int = 2):
     """
         The inverse of the default python zip function.
 

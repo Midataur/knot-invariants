@@ -4,7 +4,7 @@ from torch.nn.parallel import DistributedDataParallel
 import torch
 import wandb
 from utilities import *
-from core.datasets import *
+from datasets import *
 from tqdm.auto import tqdm
 from accelerate import Accelerator
 

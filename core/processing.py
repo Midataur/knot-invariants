@@ -1,7 +1,7 @@
 from graph_functions import color_function
 from collections import defaultdict as dd
 from tqdm import tqdm
-from pd_functions import *
+from pd_utils import *
 from pd_transformations import *
 from utilities import *
 import torch_geometric as tg
@@ -34,7 +34,7 @@ VALID_SYM_TYPES = [
     "Reversible" # K = -K
 ]
 
-def process_PD(raw):
+def process_PD(raw: str):
     """
         Processes a PD presentation from katlas into a nicer form.
 
@@ -56,7 +56,7 @@ def process_PD(raw):
 
     return PD_code
 
-def extract_line_info(line, mode="PD"):
+def extract_line_info(line: str, mode: str = "PD"):
     """
         Takes a line from the rdf file and processes it.
     """
@@ -90,8 +90,10 @@ def extract_line_info(line, mode="PD"):
 
     return (knot_id, info)
 
-# extracts gauss codes from the katlas dataset
-def get_knots(raw_filename):
+def get_knots(raw_filename: str):
+    """
+        Extracts pd codes from the katlas dataset.
+    """
     knots = dd(dict)
 
     # filter lines
@@ -138,14 +140,14 @@ def get_knots(raw_filename):
 
     return real_knots
 
-def graph_from_pd_code(pd_code):
+def graph_from_pd_code(pd_code: list[int]):
     """Turns a planar diagram code into the corresponding graph."""
 
     edges = []
     edge_colors = []
 
     # calculate the other occurrance table
-    other_occurrance_table = get_pd_other_occurrance_table(pd_code)
+    other_occurrance_table = get_other_occurrance_table(pd_code)
     orientations = calculate_orientations(pd_code, other_occurrance_table)
 
     # build up the graph
@@ -213,7 +215,7 @@ def graph_from_pd_code(pd_code):
     
     return graph
 
-def get_graphs(knots):
+def get_graphs(knots: list):
     """
         Takes in the processed data from the RDF file and converts them to Garbali graphs.
     """

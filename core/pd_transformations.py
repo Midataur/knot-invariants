@@ -1,5 +1,5 @@
 from utilities import *
-from pd_functions import *
+from pd_utils import *
 import utilities
 import itertools
 
@@ -12,10 +12,10 @@ import itertools
 
 
 """
-    The functions below are the reidermeister moves, but for pd codes.
+    The functions below are the Reidemeister moves, but for pd codes.
 """
 
-def pd_twist(pd_code, edge_label: int, over_under: int, node_sign: int):
+def twist(pd_code: list[int], edge_label: int, over_under: int, node_sign: int):
     """
         Twists an untwisted edge, adds a crossing.
 
@@ -26,7 +26,7 @@ def pd_twist(pd_code, edge_label: int, over_under: int, node_sign: int):
     pd_code = list(pd_code)
 
     # find where the edge is referenced
-    outgoing_pos, incoming_pos = pd_edge_positions(pd_code, edge_label)
+    outgoing_pos, incoming_pos = get_edge_positions_in_code(pd_code, edge_label)
 
     # delete s from the code
     # ie. decrement all higher edges
@@ -59,11 +59,11 @@ def pd_twist(pd_code, edge_label: int, over_under: int, node_sign: int):
 
     return pd_code
 
-def pd_untwist(pd_code, node_number):
+def untwist(pd_code: list[int], node_number: int):
     """
         Untwists a twisted edge, removes a crossing.
 
-        `node_number` should be zero-indexed.
+        `node_number` should be the zero-indexed number of the node that will get removed.
 
         This follows the conventions in the masters notes.
     """
@@ -106,7 +106,7 @@ def pd_untwist(pd_code, node_number):
 
     return new_code
 
-def pd_swap_twist(pd_code):
+def swap_twist(pd_code: list[int]):
     """
         Swaps a twisted edge.
 
@@ -118,9 +118,9 @@ def pd_swap_twist(pd_code):
     if len(pd_code) > EDGES_PER_NODE:
         raise Exception("Can only be used on single node codes.")
 
-    return pd_mirror_knot(pd_code)
+    return mirror_knot(pd_code)
 
-def pd_poke(pd_code, edge_1_pos, edge_2_pos, parity):
+def poke(pd_code: list[int], edge_1_pos: int, edge_2_pos: int, parity: int):
     """
         Slides one edge over another. Adds two crossings.
 
@@ -158,7 +158,7 @@ def pd_poke(pd_code, edge_1_pos, edge_2_pos, parity):
     match relative_orientation, detected_side:
         case utilities.REVERSED, utilities.LEFT:
             # whoops, the edges should be the other way around
-            return pd_poke(pd_code, edge_2_pos, edge_1_pos, parity)
+            return poke(pd_code, edge_2_pos, edge_1_pos, parity)
         case utilities.STANDARD, utilities.RIGHT:
             tau =  1
         case utilities.STANDARD, utilities.LEFT:
@@ -197,8 +197,8 @@ def pd_poke(pd_code, edge_1_pos, edge_2_pos, parity):
         node2 = cyclic_shift(node2,  relative_orientation*parity)
 
     # get the connection points
-    edge_1_out, edge_1_in = pd_edge_positions(pd_code, edge_1_label)
-    edge_2_out, edge_2_in = pd_edge_positions(pd_code, edge_2_label)
+    edge_1_out, edge_1_in = get_edge_positions_in_code(pd_code, edge_1_label)
+    edge_2_out, edge_2_in = get_edge_positions_in_code(pd_code, edge_2_label)
 
     # add the new nodes and stitch them in
     new_code = list(pd_code) + node1 + node2
@@ -209,7 +209,7 @@ def pd_poke(pd_code, edge_1_pos, edge_2_pos, parity):
 
     return new_code
 
-def pd_unpoke(pd_code, node_1_number, node_2_number):
+def unpoke(pd_code: list[int], node_1_number: int, node_2_number: int):
     """
         Takes two strands that cross without intertwining and seperates them.
         Assumes that there is a genuine poke going on, may break otherwise.
@@ -219,7 +219,7 @@ def pd_unpoke(pd_code, node_1_number, node_2_number):
 
     # ensure node1 is earlier than node2
     if node_1_number > node_2_number:
-        return pd_unpoke(pd_code, node_2_number, node_1_number)
+        return unpoke(pd_code, node_2_number, node_1_number)
 
     # get the two node indices
     node_1_index = EDGES_PER_NODE*node_1_number
@@ -267,11 +267,9 @@ def pd_unpoke(pd_code, node_1_number, node_2_number):
     
     return new_code
     
-
-
-def pd_yang_baxter(pd_code, triangle):
+def yang_baxter(pd_code: list[int], triangle: tuple[int, int, int]):
     """
-        The third Reidermeister move.
+        The third Reidemeister move.
         Does not change the crossing count.
         This move is its own inverse.
 
@@ -284,106 +282,21 @@ def pd_yang_baxter(pd_code, triangle):
 
     ### INFORMATION STAGE ###
 
-    # sanity check
-    assert len(triangle) == 3
+    yb_info = yb_information(pd_code, triangle)
 
-    # get indices where the edge occurs
-    edge_positions = [pd_edge_positions(pd_code, edge) for edge in triangle]
-
-    # figure out height levels
-    # one will be strictly under (-2)
-    # one will be in the middle (0)
-    # and one will be strictly over (2)
-    # the specific values don't matter, only the order
-    height_levels = [
-        crossing_type_from_index(source) + crossing_type_from_index(target)
-        for source, target in edge_positions
-    ]
-
-    # sanity check
-    assert sorted(height_levels) == [-2, 0, 2]
-
-    # sort everything by height
-    height_levels, triangle, edge_positions = unzip(sorted(zip(
-        height_levels, triangle, edge_positions
-    )), num_lists_expected=3)
-
-    # everything is now in the order U, M, O
-    # (under, middle, over)
-
-    # assemble the full strings
-    # ie. the pre-edge, the edge, and the post-edge
-    strings = []
-
-    for label, edge in zip(triangle, edge_positions):
-        # unpack values
-        start, end = edge
-
-        # get front, middle, and back of the string
-        middle = label
-
-        front_index = opposite_index(start)
-        front = pd_code[front_index]
-
-        back_index = opposite_index(end)
-        back = pd_code[back_index]
-
-        strings.append((front, middle, back))
-
-    orientations = calculate_orientations(pd_code)
-
-    # get the intersection data
-    # order will be [U ∩ M, U ∩ O, M ∩ O]
-    intersections = []
-    for edge1, edge2 in itertools.combinations(edge_positions, 2):
-        source1, target1 = edge1
-        source2, target2 = edge2
-
-        # find what the node number of the intersection is
-        # and what the intersection order is
-
-        string1_first   = source1//EDGES_PER_NODE
-        string1_second  = target1//EDGES_PER_NODE
-        string2_first   = source2//EDGES_PER_NODE
-        string2_second  = target2//EDGES_PER_NODE
-
-        # case bashing time!
-        # note: we're zero indexing bc it's nicer in code
-        if string1_first == string2_first:
-            node_number = string1_first
-            intersection_order = (0, 0)
-
-        elif string1_first == string2_second:
-            node_number = string1_first
-            intersection_order = (0, 1)
-
-        elif string1_second == string2_first:
-            node_number = string1_second
-            intersection_order = (1, 0)
-
-        elif string1_second == string2_second:
-            node_number = string1_second
-            intersection_order = (1, 1)
-
-        else:
-            raise Exception(f"""This state should be unreachable. Values observed: {
-                source1, source2, target1, target2
-            }""")
+    if yb_info is None:
+        raise Exception("Invalid YB move.")
     
-        node_sign = orientations[node_number]
-
-        intersections.append((intersection_order, node_sign, node_number))
+    intersections, strings = yb_info
     
     ### MODIFICATION STAGE
 
-    # modify the code
-
-    for intersection, strings in zip(
+    for intersection, intersection_strings in zip(
         intersections,
         itertools.combinations(strings, 2)
     ):
         # get the new crossing
-        crossing, start_index = yb_construct_crossing(intersection, strings)
+        crossing, start_index = yb_construct_crossing(intersection, intersection_strings)
         
         # overwrite the old crossing
         for pos, x in enumerate(crossing):
@@ -403,7 +316,7 @@ def pd_yang_baxter(pd_code, triangle):
 
 
 
-def internal_swap_generator(num_nodes, pattern):
+def internal_swap_generator(num_nodes: int, pattern: tuple[int, ...]):
     """
         Many pd code operations involve rearranging within a node.
 
@@ -416,7 +329,7 @@ def internal_swap_generator(num_nodes, pattern):
         for entry in pattern:
             yield node + entry
 
-def pd_reverse_knot(pd_code):
+def reverse_knot(pd_code: list[int]):
     """
         Swaps the traversal direction. Sends K -> -K.
     """
@@ -427,7 +340,7 @@ def pd_reverse_knot(pd_code):
 
     return [pd_code[pos] for pos in internal_swap_generator(num_nodes, pattern)]
 
-def pd_mirror_knot(pd_code):
+def mirror_knot(pd_code: list[int]):
     """
         Swap the orientations. Sends K -> K*.
     """
@@ -439,14 +352,14 @@ def pd_mirror_knot(pd_code):
 
     return [pd_code[pos] for pos in internal_swap_generator(num_nodes, pattern)]
 
-def pd_reverse_and_mirror_knot(pd_code):
+def reverse_and_mirror_knot(pd_code: list[int]):
     """
         Swaps and mirrors. Sends K -> -K*.
     """
 
-    return pd_reverse_knot(pd_mirror_knot(pd_code))
+    return reverse_knot(mirror_knot(pd_code))
  
-def pd_identity(pd_code):
+def pd_identity(pd_code: list[int]):
     """
         The identity. Sends K -> K.
 
@@ -455,11 +368,20 @@ def pd_identity(pd_code):
 
     return list(pd_code)
 
-# for a given symmetry type, tells you the operations that generate a distinct knot
+# for a given symmetry type, tells you the operations that form the symmetry group
+SYMMETRY_GROUP = {
+    "Chiral": [pd_identity],
+    "Fully amphicheiral": [pd_identity, reverse_knot, mirror_knot, reverse_and_mirror_knot],
+    "Negative amphicheiral": [pd_identity, reverse_and_mirror_knot], # note -K = K* for this class
+    "Positively amphicheiral": [pd_identity, mirror_knot], # note -K = -K* for this class
+    "Reversible": [pd_identity, reverse_knot] # note K* = -K* for this class
+}
+
+# for a given symmetry type, tells you the operations needed to create all variants
 NEEDED_PD_TRANSFORMS = {
-    "Chiral": [pd_identity, pd_reverse_knot, pd_mirror_knot, pd_reverse_and_mirror_knot],
+    "Chiral": [pd_identity, reverse_knot, mirror_knot, reverse_and_mirror_knot],
     "Fully amphicheiral": [pd_identity],
-    "Negative amphicheiral": [pd_identity, pd_reverse_knot], # note -K = K* for this class
-    "Positively amphicheiral": [pd_identity, pd_reverse_knot], # note -K = -K* for this class
-    "Reversible": [pd_identity, pd_mirror_knot] # note K* = -K* for this class
+    "Negative amphicheiral": [pd_identity, reverse_knot], # note -K = K* for this class
+    "Positively amphicheiral": [pd_identity, reverse_knot], # note -K = -K* for this class
+    "Reversible": [pd_identity, mirror_knot] # note K* = -K* for this class
 }

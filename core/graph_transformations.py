@@ -3,7 +3,12 @@ from graph_functions import *
 import numpy as np
 import torch
 
-### the following are reidermeister moves                    ###
+"""
+    NOTE: much of the code here is esentially deprecated. Instead of transforming the graph,
+    use pd_transformations on the underlying pd code and generate a new graph.
+"""
+
+### the following are Reidemeister moves                    ###
 ### see https://mathworld.wolfram.com/ReidemeisterMoves.html ###
 
 @prep_graph(will_mutate_graph=True, wants_edges_transposed=True)
@@ -223,14 +228,6 @@ def graph_identity(graph):
         Effectively an alias for graph.clone() via the @prep_graph wrapper.
     """
     return graph
-
-VALID_SYM_TYPES = [
-    "Chiral", # no symmetries
-    "Fully amphicheiral", # K = -K = K* = -K*
-    "Negative amphicheiral", # K = -K*
-    "Positively amphicheiral", #K = K*, not actually in the database bc it's rare
-    "Reversible" # K = -K
-]
 
 # for a given symmetry type, tells you the operations that generate a distinct knot
 NEEDED_GRAPH_TRANSFORMS = {
