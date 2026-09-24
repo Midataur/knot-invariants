@@ -166,19 +166,41 @@ def show_list_diff(list1: list, list2: list):
         Useful for debugging.
     """
 
+    START_COLOR = "\033[93m"
+    END_COLOR = "\033[0m"
+
+    # avoid mutations
+    list1 = list(list1)
+    list2 = list(list2)
+
+    # pad the lists to be the same length
+    len_diff = len(list1) - len(list2)
+
+    if len_diff < 0:
+        list1 += [" " for x in range(abs(len_diff))]
+    elif len_diff > 0:
+        list2 += [" " for x in range(abs(len_diff))]
+
+    # display the lists
     display1 = "["
     display2 = "["
 
     for item1, item2 in zip(list1, list2):
-        toadd1 = str(item1)
-        toadd2 = str(item2)
+        to_add_1 = str(item1)
+        to_add_2 = str(item2)
+
+        diff = len(to_add_1) - len(to_add_2)
+        if diff < 0:
+            to_add_1 += " "*abs(diff)
+        elif diff > 0:
+            to_add_2 += " "*abs(diff)
 
         if item1 != item2:
-            toadd1 = f"_{toadd1}_"
-            toadd2 = f"_{toadd2}_"
+            to_add_1 = f"{START_COLOR}{to_add_1}{END_COLOR}"
+            to_add_2 = f"{START_COLOR}{to_add_2}{END_COLOR}"
         
-        display1 += f"{toadd1}, "
-        display2 += f"{toadd2}, "
+        display1 += f"{to_add_1}, "
+        display2 += f"{to_add_2}, "
     
     print(display1[:-2]+"]")
     print(display2[:-2]+"]")

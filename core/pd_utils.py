@@ -1,9 +1,13 @@
 from collections import defaultdict as dd
+from spherogram import Link
 from utilities import *
 import itertools
 
 SHIELDS_MAX_ITERATIONS = 100_000
+
 EDGE_PLACEHOLDER = -float("inf")
+
+SPHERE_EULER_CHARACTERISTIC = 2
 
 def faces_from_pd_code(pd_code: list[int]):
     """
@@ -12,7 +16,7 @@ def faces_from_pd_code(pd_code: list[int]):
 
     faces = set()
 
-    other_occurance_table = get_other_occurrance_table(pd_code)
+    other_occurance_table = get_other_occurrence_table(pd_code)
 
     # each edge will be in exactly two faces
     # if we keep track of this, we can save a lot of computation
@@ -58,9 +62,9 @@ def faces_from_pd_code(pd_code: list[int]):
     
     return faces
 
-def get_other_occurrance_table(pd_code: list[int]):
+def get_other_occurrence_table(pd_code: list[int], strict=True) -> list[int] | None:
     """
-        Given a PD code, precomputes the "other occurrance" lookup table.
+        Given a PD code, precomputes the "other occurrence" lookup table.
 
         This saves time in the main Shields algorithm
 
@@ -84,13 +88,16 @@ def get_other_occurrance_table(pd_code: list[int]):
     
     # sanity check
     if None in lookup:
-        raise Exception(f"Malformed PD code detected: {pd_code}")
+        if strict:
+            raise Exception(f"Malformed PD code detected: {pd_code}")
+        else:
+            return None
 
     return lookup
 
 def calculate_orientations(
         pd_code: list[int], 
-        other_occurrance_table: list = None, 
+        other_occurrence_table: list = None, 
         return_directions: bool = False
 ):
     """
@@ -116,8 +123,8 @@ def calculate_orientations(
         directions[EDGES_PER_NODE*x+2] = OUTGOING
     
     # calculate the other occurance table if it was not provided
-    if other_occurrance_table == None:
-        other_occurrance_table = get_other_occurrance_table(pd_code)
+    if other_occurrence_table == None:
+        other_occurrence_table = get_other_occurrence_table(pd_code)
 
     # calculate the unknown orientations
     iterations = 0
@@ -131,8 +138,8 @@ def calculate_orientations(
             odd_index_2 = EDGES_PER_NODE*x+3
 
             # gets the (possibly) known direction of the other end of the edge
-            odd_1_other = directions[other_occurrance_table[odd_index_1]]
-            odd_2_other = directions[other_occurrance_table[odd_index_2]]
+            odd_1_other = directions[other_occurrence_table[odd_index_1]]
+            odd_2_other = directions[other_occurrence_table[odd_index_2]]
 
             # update the directions if possible
             if odd_1_other is not None:
@@ -172,6 +179,9 @@ def get_edge_positions_in_code(pd_code: list[int], edge_label: int):
     # get the directions of each position in the code
     directions = calculate_orientations(pd_code, return_directions=True)
 
+    incoming_pos = None
+    outgoing_pos = None
+
     # get the ones corresponding to the desired edge
     # maybe there's a more pythonic solution here? idk
     for index, label in enumerate(pd_code):
@@ -181,6 +191,9 @@ def get_edge_positions_in_code(pd_code: list[int], edge_label: int):
             else:
                 outgoing_pos = index
     
+    if incoming_pos is None or outgoing_pos is None:
+        raise Exception(f"Malformed PD code!\nEdge_label: {edge_label}\nCode: {pd_code}")
+
     return outgoing_pos, incoming_pos
 
 def next_free_edge_label(pd_code: list[int], amount: int = 1):
@@ -263,11 +276,11 @@ def get_ordered_face(
     """
 
     # get some helper lists
-    other_occurance_table = get_other_occurrance_table(pd_code)
+    other_occurance_table = get_other_occurrence_table(pd_code)
     directions = calculate_orientations(
         pd_code, 
         return_directions=True,
-        other_occurrance_table=other_occurance_table
+        other_occurrence_table=other_occurance_table
     )
 
     # set up starting config
@@ -359,8 +372,10 @@ def yb_construct_crossing(intersection: tuple[int, int, int], strings: tuple[int
     intersection_order, node_sign, node_number = intersection
     string1, string2 = strings
 
-    # perform the yang-baxter (reverse the intersection order)
-    intersection_order = intersection_order[::-1]
+    # perform the yang-baxter (reverse the intersection order).
+    # in this context, reversing means flipping 0s to 1s and vice-versa.
+    # note: ^ is XOR.
+    intersection_order = [x ^ 1 for x in intersection_order]
 
     # get the relevant edges
     # the first edge is always the same
@@ -399,36 +414,66 @@ def pd_can_unpoke(pd_code: list[int], node_1_num: int, node_2_num: int) -> bool:
     """
         Takes in a `pd_code` and two node numbers and tells you if
         they can be removed with an unpoke move. This code assume that
-        theorem 7.8 in my notes is correct.
-
-        TODO: write a better proof for theorem 7.8
+        theorem 8.15 (detecting unpokes in pd) in my notes is correct.
     """
 
     node1 = get_node(pd_code, node_1_num)
     node2 = get_node(pd_code, node_2_num)    
 
-    # condition 1 in theorem 7.8
-    shared_edges = set(node1).intersection(set(node2))
-    connection_condition = len(shared_edges) == 2
+    # condition 1 in theorem 8.15 (connectivity)
+    found_bigon = False
 
-    # condition 2 in theorem 7.8
-    adjacency_per_node = []
-    for node in (node1, node2):
-        positions_in_node = [node.index(x) for x in shared_edges]
+    # check all edges to find a connecting bigon
+    for pos, edge_label in enumerate(node1):
+        # check if this edge is shared by both nodes
+        if edge_label not in node2:
+            continue # womp womp
 
-        # the length of a node is exactly 4, and adjacency is cyclic
-        # hence, they are adjacent if the positions differ by an odd number
+        edge_pos_in_code = node_1_num*EDGES_PER_NODE + pos
 
-        adjacent_in_node = abs(max(positions_in_node)-min(positions_in_node)) % 2 == 1
-        adjacency_per_node.append(adjacent_in_node)
+        # this is promising, check if there's a bigon on either side
+        for neighbour_side in (LEFT, RIGHT):
+            # first, check if the neighour if also shared
+            neighbour_label = node1[(pos + neighbour_side)%EDGES_PER_NODE]
+            if neighbour_label not in node2:
+                continue # womp womp womp
 
-    adjacency_condition = all(adjacency_per_node)
+            # very promising!
+            # check the face
+            face = get_ordered_face(
+                pd_code, 
+                edge_pos_in_code, 
+                direction=neighbour_side
+            )
+
+            face = list(face.keys())
+
+            if len(face) == 2 and neighbour_label in face:
+                found_bigon = True
+            
+        # we're done, no point continuing this loop
+        if found_bigon == True:
+            break
+        
+    # did we find one?
+    if not found_bigon:
+        return False
     
-    # condition 3 in theorem 7.8
+    # condition 2 in theorem 8.15 (orientations)
     orientations = calculate_orientations(pd_code)
-    sign_condition = orientations[node_1_num] != orientations[node_2_num]
+    if not orientations[node_1_num] == -orientations[node_2_num]:
+        return False
+    
+    # extra condition: neither node has a twist.
+    # this isn't a strictly necessary condition, 
+    # it's just that i don't want to deal with that edge case.
+    # you can just untwist it anyway.
 
-    return connection_condition and adjacency_condition and sign_condition
+    if len(set(node1)) != EDGES_PER_NODE or len(set(node2)) != EDGES_PER_NODE:
+        return False
+
+    # we passed all the tests
+    return True
 
 def yb_information(pd_code: list[int], triangle: tuple[int, int, int]):
     """
@@ -442,7 +487,6 @@ def yb_information(pd_code: list[int], triangle: tuple[int, int, int]):
 
     # sanity check
     if len(triangle) != 3:
-        print("length fail", triangle)
         return None
 
     # get indices where the edge occurs
@@ -460,7 +504,6 @@ def yb_information(pd_code: list[int], triangle: tuple[int, int, int]):
 
     # sanity check
     if sorted(height_levels) != [-2, 0, 2]:
-        print("height fail", height_levels)
         return None
 
     # sort everything by height
@@ -535,5 +578,192 @@ def yb_information(pd_code: list[int], triangle: tuple[int, int, int]):
         node_sign = orientations[node_number]
 
         intersections.append((intersection_order, node_sign, node_number))
-    
+
     return (intersections, strings)
+
+def euler_characteristic(pd_code: list[int]):
+    """
+        Any planar diagram code defines a simplicial complex. This
+        calculates the Euler characteristic of this complex,
+        
+        ie. `vertices - edges + faces`.
+
+        Note: this function assumes the code is well-formed.
+    """
+
+    vertices = len(pd_code)//EDGES_PER_NODE
+    edges = len(set(pd_code))
+    faces = len(faces_from_pd_code(pd_code))
+    
+    return vertices - edges + faces
+
+def pd_traversal_order(
+        pd_code: list[int], 
+        start_pos=0, 
+        other_occurrence_table: list[int] | None = None
+) -> list[int]:
+    """
+        Takes in a `pd_code` (and optionally a `start_pos`) and returns the
+        traversal order, ie. the order of the positions if you travel along the string.
+        Note: if this is a link diagram (ie. more than one string), then the returned
+        order may be shorter than the length of the code.
+
+        Can take in an `other_occurrence_table` if one has already been computed, otherwise
+        this will be computed on the spot.
+    """
+
+    order_visited = []
+    cur_pos = start_pos
+
+    if other_occurrence_table is None:
+        other_occurrence_table = get_other_occurrence_table(pd_code)
+
+    while True:
+        # log
+        order_visited.append(cur_pos)
+
+        # find the opposite edge
+        current_node = cur_pos//EDGES_PER_NODE
+        opposite = current_node*EDGES_PER_NODE + (cur_pos+2)%EDGES_PER_NODE
+
+        # halt if we're repeating ourselves
+        if opposite in order_visited:
+            break
+
+        # log
+        order_visited.append(opposite)
+
+        # find where the opposite edge connects to
+        next_pos = other_occurrence_table[opposite]
+        
+        # halt if we're repeating ourselves
+        if next_pos in order_visited:
+            break
+
+        # continue on 
+        cur_pos = next_pos
+    
+    return order_visited
+
+def pd_code_is_valid(pd_code: list[int], verbose=False) -> bool:
+    """
+        Takes in a `pd_code` and returns whether this represents a valid
+        knot diagram. This implement the Mastin conditions, 
+        ie. prop 7.3 in my master notes.
+
+        If `verbose` is set to `True` then a message will be printed
+        about what condition failed.
+    """
+
+    # define warning function
+    def warning_log(stage):
+        if verbose:
+            print(f"Code failure on {stage}. The code was: {pd_code}")
+
+    # condition a: length is a multiple of 4
+    if len(pd_code)%EDGES_PER_NODE != 0:
+        warning_log("condition a (length)")
+        return False
+
+    # condition b: each label appears exactly twice
+    freqs = dd(int)
+
+    for label in pd_code:
+        freqs[label] += 1
+
+    occurs_twice = [x == 2 for x in freqs.values()]
+
+    if not all(occurs_twice):
+        warning_log("condition b (label occurance regularity)")
+        return False
+    
+    # condition c: each label appears once incoming and once outgoing
+    other_occurrence_table = get_other_occurrence_table(pd_code, strict=False)
+
+    if other_occurrence_table is None:
+        # the shields algorithm failed, so the code must be malformed
+        warning_log("shields algorithm while computing condition c")
+        return False
+
+    directions = calculate_orientations(
+        pd_code, other_occurrence_table=other_occurrence_table, 
+        return_directions=True
+    )
+
+    label_direction_sums = dd(int)
+    for direction, label in zip(directions, pd_code, strict=True):
+        label_direction_sums[label] += direction
+    
+    label_directions_sums_to_zero = [
+        dir_sum == 0 for dir_sum in label_direction_sums.values()
+    ]
+
+    if not all(label_directions_sums_to_zero):
+        warning_log("condition c (label direction regularity)")
+        return False
+    
+    # condition d: the first in each node is incoming,
+    # the third is outgoing, and the second and fourth are opposite signs
+
+    node_count = len(pd_code)//EDGES_PER_NODE
+    for node_index in range(node_count):
+        node_start = node_index*EDGES_PER_NODE
+
+        first  = directions[node_start]
+        second = directions[node_start+1]
+        third  = directions[node_start+2]
+        fourth = directions[node_start+3]
+
+        if first != INCOMING or third != OUTGOING or second != -fourth:
+            warning_log("condition d (node regularity)")
+            return False
+        
+    # condition e: the code only has one string
+    traversal_order = pd_traversal_order(
+        pd_code, 
+        other_occurrence_table=other_occurrence_table
+    )
+
+    if len(traversal_order) != len(pd_code):
+        warning_log("condition e (strings)")
+        return False
+    
+    # condition f: the code has euler characteristic 2
+    # ie. simplicial complex is homeomorphic to a sphere
+    if euler_characteristic(pd_code) != SPHERE_EULER_CHARACTERISTIC:
+        warning_log("condition f (euler)")
+        return False
+
+    # we passed all the requirements!
+    return True
+
+def node_print(pd_code: list[int]):
+    """
+        Prints a code in blocks of 4 to make it easier to read.
+    """
+
+    print(" ".join([
+        str(pd_code[
+            EDGES_PER_NODE*x:EDGES_PER_NODE*x+EDGES_PER_NODE
+        ]) for x in range(len(pd_code)//EDGES_PER_NODE)
+    ]))
+
+def pd_code_to_snappy_link(pd_code: list[int]):
+    """
+        Takes in a `pd_code` and returns a snappy link object.
+        This is useful for preforming calculations/viewing the code. 
+    """
+
+    correct_format = [
+        get_node(pd_code, node_num) 
+        for node_num in range(len(pd_code)//EDGES_PER_NODE)
+    ]
+
+    return Link(correct_format)
+
+# def get_gauss_code_from_pd(pd_code: list[int]):
+#     """
+#         Takes in a planar diagram code and returns an unoriented Gauss code.
+#     """
+
+#     raise NotImplementedError("This hasn't been written yet. Apologies.")

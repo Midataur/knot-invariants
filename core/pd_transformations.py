@@ -178,7 +178,7 @@ def poke(pd_code: list[int], edge_1_pos: int, edge_2_pos: int, parity: int):
     # there's no nicer way to do this than drawing the picture 
     # (at least, that i know of).
 
-    # here we assume d = +1, we fix it later
+    # here we assume d (parity) = +1, we fix it later
     match relative_orientation, tau:
         case  1,  _: # case 1
             node1 = [p2, p1, o2, o1]
@@ -191,10 +191,10 @@ def poke(pd_code: list[int], edge_1_pos: int, edge_2_pos: int, parity: int):
             node2 = [i2, p1, p2, o1]
 
     # (maybe) swap the crossings
-    # derivation in the masters notes
+    # this is lemma 7.5 + lemma 7.6 in the masters notes
     if parity == -1:
-        node1 = cyclic_shift(node1, -relative_orientation*parity)
-        node2 = cyclic_shift(node2,  relative_orientation*parity)
+        node1 = cyclic_shift(node1,  relative_orientation*parity)
+        node2 = cyclic_shift(node2, -relative_orientation*parity)
 
     # get the connection points
     edge_1_out, edge_1_in = get_edge_positions_in_code(pd_code, edge_1_label)
@@ -225,15 +225,12 @@ def unpoke(pd_code: list[int], node_1_number: int, node_2_number: int):
     node_1_index = EDGES_PER_NODE*node_1_number
     node_2_index = EDGES_PER_NODE*node_2_number
 
-    node1 = pd_code[node_1_index:node_1_index+EDGES_PER_NODE]
-    node2 = pd_code[node_2_index:node_2_index+EDGES_PER_NODE]
-
-    # get the directions of each edge
-    directions = calculate_orientations(pd_code, return_directions=True)
+    node_1 = get_node(pd_code, node_1_number)
+    node_2 = get_node(pd_code, node_2_number)
 
     # figure out what the connecting edges are
     # these are the two that are shared between the nodes
-    shared_edges = set(node1).intersection(set(node2))
+    shared_edges = set(node_1).intersection(set(node_2))
 
     # get two new edge labels
     string1_label, string2_label = next_free_edge_label(pd_code, 2)
@@ -241,13 +238,13 @@ def unpoke(pd_code: list[int], node_1_number: int, node_2_number: int):
     # look at the first edge in each node
     # this will be the start of a string or a connecting edge
     # if it's a start, the end of that string will be third in the other node
-    if node1[0] not in shared_edges:
-        string1 = (node1[0], node2[2])
+    if node_1[0] not in shared_edges:
+        string1 = (node_1[0], node_2[2])
     else:
-        string1 = (node2[0], node1[2])
+        string1 = (node_2[0], node_1[2])
     
     # get the other string
-    all_edges = set(node1+node2)
+    all_edges = set(node_1+node_2)
     seen_already = set(string1).union(shared_edges)
     string2 = tuple(all_edges.difference(seen_already))
 

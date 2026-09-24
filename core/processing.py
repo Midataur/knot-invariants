@@ -146,9 +146,9 @@ def graph_from_pd_code(pd_code: list[int]):
     edges = []
     edge_colors = []
 
-    # calculate the other occurrance table
-    other_occurrance_table = get_other_occurrance_table(pd_code)
-    orientations = calculate_orientations(pd_code, other_occurrance_table)
+    # calculate the other occurrence table
+    other_occurrence_table = get_other_occurrence_table(pd_code)
+    orientations = calculate_orientations(pd_code, other_occurrence_table)
 
     # build up the graph
     # see master's notes: the PD to Garbali algorithm
@@ -160,12 +160,14 @@ def graph_from_pd_code(pd_code: list[int]):
     pd_code_edge_labels = []
 
     for x in range(max(pd_code)+1):
+        # TODO: refactor this to use `pd_traversal_order`
+
         # find the opposite edge
         current_node = current_pos//EDGES_PER_NODE
         opposite = current_node*EDGES_PER_NODE + (current_pos+2)%EDGES_PER_NODE
 
         # find where the opposite edge connects to
-        next_pos = other_occurrance_table[opposite]
+        next_pos = other_occurrence_table[opposite]
         next_node = next_pos//EDGES_PER_NODE
 
         # work out what the edge color should be

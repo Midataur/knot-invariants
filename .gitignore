@@ -10,4 +10,5 @@ model_saves/*
 *.experiments/sh
 downloadmodel.sh
 venv
+.venv
 *.pyc
