@@ -1,14 +1,16 @@
-import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.nn.parallel import DistributedDataParallel
-import torch
-import wandb
+from config_object import ConfigObject
+from accelerate import Accelerator
+import torch.optim as optim
+from tqdm.auto import tqdm
 from utilities import *
 from datasets import *
-from tqdm.auto import tqdm
-from accelerate import Accelerator
+import torch
+import random
+import wandb
 
-def train(config):
+def train(config: ConfigObject):
     accelerator = Accelerator()
 
     if accelerator.is_local_main_process:
@@ -22,7 +24,9 @@ def train(config):
         # load the data
         print("Loading data...")
 
-    torch.manual_seed(config["random_seed"])
+    # set seed for deterministic behaviour
+    torch.manual_seed(config.random_seed)
+    random.seed(config.random_seed)
 
     # try loading model and config
     model, config = try_loading_model(config)
@@ -33,11 +37,11 @@ def train(config):
     # Define the loss function
     criterion = model.get_loss()
 
-    learning_rate = config["learning_rate"]
-    weight_decay = config["weight_decay"]
-    lr_factor = config["lr_factor"]
-    lr_patience = config["lr_patience"]
-    threshold = config["threshold"]
+    learning_rate = config.learning_rate
+    weight_decay = config.weight_decay
+    lr_factor = config.lr_factor
+    lr_patience = config.lr_patience
+    threshold = config.threshold
 
     # Define the optimizer and scheduler
     optimizer = optim.AdamW(
@@ -60,7 +64,7 @@ def train(config):
     )
 
     # add dataset size to config
-    config["dataset_size"] = len(train_dataset)
+    config.dataset_size = len(train_dataset)
 
     val_dataloader = accelerator.prepare(val_dataloader)
 
@@ -71,13 +75,13 @@ def train(config):
         # start a new wandb run to track this script
         wandb.init(
             # set the wandb project where this run will be logged
-            project=config["wandb_project"],
+            project=config.wandb_project,
 
             # track run hyperparameters and metadata
             config=config,
             settings=wandb.Settings(),
             resume="allow",
-            id=config["modelname"]
+            id=config.model_name
         )
 
     epoch = 0

@@ -7,7 +7,7 @@ from pd_transformations import *
 import torch
 import unittest
 import time
-import processing
+import dataset_processing as dataset_processing
 import graph_transformations as graph_transformations
 
 class MainTests(unittest.TestCase):
@@ -16,8 +16,8 @@ class MainTests(unittest.TestCase):
         # get graphs
         raw_filename = "../datasets/raw_dir/katlas.rdf"
 
-        self.knots = processing.get_knots(raw_filename)
-        self.graphs = processing.get_graphs(self.knots)
+        self.knots = dataset_processing.get_knots(raw_filename)
+        self.graphs = dataset_processing.get_graphs(self.knots)
         self.trefoil = self.graphs[0]
 
     def setUp(self):
@@ -41,8 +41,7 @@ class MainTests(unittest.TestCase):
             pd_canonical_form(code2),
             msg=msg
         )
-
-    @unittest.skip("Speed")
+  
     def test_processing_types(self):
         """Checks that everything in the graphs that should be a tensor is."""
 
@@ -50,8 +49,7 @@ class MainTests(unittest.TestCase):
             self.assertIsInstance(graph.x, torch.Tensor, msg=f"id is {graph.knot_id}")
             self.assertIsInstance(graph.edge_index, torch.Tensor, msg=f"id is {graph.knot_id}")
             self.assertIsInstance(graph.edge_attr, torch.Tensor, msg=f"id is {graph.knot_id}")
-
-    @unittest.skip("Speed")
+    
     def test_twist(self):
         """
             Try twisting the second edge using graph and pd.
@@ -73,9 +71,8 @@ class MainTests(unittest.TestCase):
                     self.assertCodeEquivalent(
                         code_from_graph_twist, via_pd_twist, 
                         msg=f"Broke on {graph.knot_id} with settings ({option1}, {option2})"
-                    )
+                    )  
     
-    @unittest.skip("Speed")
     def test_pd_untwist(self):
         """Tries twisting and untwisting every knot using pd transformations."""
 
@@ -92,9 +89,8 @@ class MainTests(unittest.TestCase):
                         self.assertCodeEquivalent(
                             graph.pd_code, untwisted,
                             msg=f"Broke on {graph.knot_id} with settings ({edge}, {option1}, {option2})"
-                        )
-                    
-    @unittest.skip("Speed")
+                        )                 
+    
     def test_faces(self):
         """
             Calculates the faces of all the base knots in two different ways,
@@ -118,8 +114,7 @@ class MainTests(unittest.TestCase):
                 graph.faces, pd_faces,
                 msg=f"failed on {graph.knot_id}"
             )
-
-    @unittest.skip("Speed")
+ 
     def test_reverse(self):
         """
             Reverses each base knot via graph and pd methods.
@@ -138,8 +133,7 @@ class MainTests(unittest.TestCase):
 
             # compare the codes
             self.assertCodeEquivalent(pd_from_graph, reversed_pd_code, msg=f"Broke on {graph.knot_id}.")
-
-    @unittest.skip("Speed")
+    
     def test_mirror(self):
         """
             Mirrors each base knot via graph and pd methods.

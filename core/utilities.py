@@ -31,8 +31,8 @@ def save_model_and_config(model, config, accelerator):
         Saves a model and the related config.
     """
     # define save location
-    path = config["PATH"]
-    modelname = config["modelname"]
+    path = config.PATH
+    modelname = config.modelname
     save_directory = f"{path}/model_saves/{modelname}"
 
     # save the model
@@ -52,8 +52,8 @@ def try_loading_model(config, surgery_func=None):
     """
 
     # define save location
-    path = config["PATH"]
-    modelname = config["modelname"]
+    path = config.PATH
+    modelname = config.modelname
     save_directory = f"{path}/model_saves/{modelname}"
 
     # check if the config exists and load it
@@ -74,7 +74,7 @@ def try_loading_model(config, surgery_func=None):
         print("Did some surgery")
 
     # create the model template
-    ModelType = model_types.MODELS[config["model_type"]]
+    ModelType = model_types.MODELS[config.model_type]
 
     model = ModelType(config)
 

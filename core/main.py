@@ -1,61 +1,72 @@
-CONFIG = {
-    "modelname": "test-1",
-    "model_type": "GCN",
+from config_object import ConfigObject
+from dataset_processing import Knot
+from pd_utils import EDGES_PER_NODE
+import functools
+import mixer
 
-    "dataset": "katlas",
-    "dataset_type": "graph",
+# set up the mixer
+max_crossings = 15
+n_mix_steps = 40
 
-    # the url to recover the datset from
-    "dataset_url": "http://katlas.org/Data/katlas.rdf.gz",
+hamiltonian = functools.partial(
+    mixer.crossing_hamiltonian_with_cutoff,
+    max_crossings = max_crossings
+)
 
-    "wandb_project": "knot-simclr", 
+mixer = functools.partial(
+    mixer.hamiltonian_mixer,
+    nsteps=n_mix_steps,
+    hamiltonian=hamiltonian
+)
 
-    "random_seed": 42,
+NO_MORE_THAN = 10
 
-    # dataset parameters
-    "braid_count": 4,
-    "max_word_length": 10,
+# set up the train set decider
+def get_train_set(knots: list[Knot]):
+    """
+        Enfore a maximum crossing count on seeds knots in the training set.
+    """
 
-    # embedding dimension
-    # good starting value: 402
-    "n_embed": 402,
+    return list(filter(
+        lambda x: len(x)//EDGES_PER_NODE <= NO_MORE_THAN,
+        knots
+    ))
 
-    # dropout factor to use
-    # i usually set to zero
-    "dropout": 0,
+# the actual config object i'm using for this run.
+# documentation of parameter meanings can be found
+# in the config_object file.
+CONFIG = ConfigObject(
+    model_name      = "test-1",
+    model_type      = "BasicTransformer",
+    raw_db_filename = "katlas.rdf",
+    data_url        = "http://katlas.org/Data/katlas.rdf.gz",
+    dataset_type    = "knotdatawithtransforms",
+    wandb_project   = "knot-simclr",
+    random_seed     = 42,
 
-    # number of blocks to have
-    # higher means a deeper network
-    "n_blocks": 8,
+    extra_notes     = f"Only training on knots with at most {NO_MORE_THAN} crossings.",
 
-    # good starting value: 3*10^-4
-    "learning_rate": 3*(10**-5), 
+    get_train_set   = get_train_set,
+    n_embed         = 402,
+    n_heads         = 6,
+    dropout         = 0,
+    n_blocks        = 8,
 
-    # good starting value: 64
-    "batchsize": 8192, 
+    max_crossings   = max_crossings,
+    n_mix_steps     = n_mix_steps,
+    mixer           = mixer,
 
-    # good starting value: 0.1
-    "weight_decay": 0.001, 
+    learning_rate   = 3*(10**-5), 
+    batchsize       = 8192, 
+    weight_decay    = 0.001, 
+    lr_factor       = 0.1, 
+    lr_patience     = 10, 
+    threshold       = 0.01, 
+    n_workers       = 0
+)
 
-    # usually 0.1
-    "lr_factor": 0.1, 
-
-    # usually 10
-    "lr_patience": 10, 
-
-    # usually 0.01
-    "threshold": 0.01, 
-
-    # number of workers to use for loading data to the gpus
-    # set to 0 for all, +ve for specific
-    # usually 0
-    "n_workers": 0, 
-
-    # should be . or .. unless you're doing something weird
-    "PATH": "..",
-}
-
-assert CONFIG["n_embed"] % CONFIG["n_heads"] == 0
+# sanity check
+assert CONFIG.n_embed % CONFIG.n_heads == 0
 
 if __name__ == "__main__":
     print("Loading libraries...")

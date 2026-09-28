@@ -1,5 +1,7 @@
 from graph_functions import color_function
 from collections import defaultdict as dd
+from collections.abc import Sequence
+from typing import NamedTuple
 from tqdm import tqdm
 from pd_utils import *
 from pd_transformations import *
@@ -24,15 +26,24 @@ IS_LINK = "is_link"
 # if no sim type is provided we assume that the knot is fully symmetric.
 # this is the conservative assumption and guarantees that we won't accidentally
 # have two equivalent knots listed as different.
-DEFAULT_SIM_TYPE = "Fully amphicheiral"
+DEFAULT_SYM_TYPE = "Fully amphicheiral"
 
 VALID_SYM_TYPES = [
-    "Chiral", # no symmetries
-    "Fully amphicheiral", # K = -K = K* = -K*
-    "Negative amphicheiral", # K = -K*
-    #"Positively amphicheiral", K = K*, not actually in the database bc it's rare
-    "Reversible" # K = -K
+    "Chiral",                    # no symmetries
+    "Fully amphicheiral",        # K = -K = K* = -K*
+    "Negative amphicheiral",     # K = -K*
+    "Positively amphicheiral",   # K =  K*, not actually in the database bc it's rare
+    "Reversible"                 # K = -K
 ]
+
+class Knot(NamedTuple):
+    """
+        A bunch of data related to a knot.
+    """
+
+    knot_id: str
+    pd_code: list[int]
+    sym_type: str
 
 def process_PD(raw: str):
     """
@@ -90,7 +101,7 @@ def extract_line_info(line: str, mode: str = "PD"):
 
     return (knot_id, info)
 
-def get_knots(raw_filename: str):
+def get_knots(raw_filename: str) -> dict[str, Knot]:
     """
         Extracts pd codes from the katlas dataset.
     """
@@ -131,16 +142,39 @@ def get_knots(raw_filename: str):
             # it's a real knot, add to the list
             real_knots[knot_id] = knot
 
-            # we don't need this key anymore
-            del real_knots[knot_id][IS_LINK]
-
             # some knots have weird broken symmetry types, fix this
             if SYM_TYPE not in knot.keys() or knot[SYM_TYPE] not in VALID_SYM_TYPES:
-                knot[SYM_TYPE] = DEFAULT_SIM_TYPE
+                knot[SYM_TYPE] = DEFAULT_SYM_TYPE
 
-    return real_knots
+    # convert to a better format
+    formatted_real_knots = {}
 
-def graph_from_pd_code(pd_code: list[int]):
+    for knot_id, data in real_knots.items():
+        # generate non-equivalent codes depending on symmetry type
+        variants = []
+
+        pd_code  = data[PD_CODE]
+        sym_type = data[SYM_TYPE]
+
+        transformations_to_do = NEEDED_PD_TRANSFORMS[sym_type]
+        
+        # compute the transformed codes
+        for transform in transformations_to_do:
+            variants.append(transform(pd_code))
+
+        # compute the associated graphs
+        for number, new_code in enumerate(variants):
+            variant_id = f"{knot_id} v{number}" if len(variants) > 1 else knot_id
+
+            formatted_real_knots[variant_id] = Knot(
+                pd_code  = new_code,
+                sym_type = data[SYM_TYPE],
+                knot_id  = variant_id
+            )
+
+    return formatted_real_knots
+
+def graph_from_pd_code(pd_code: Sequence[int]):
     """Turns a planar diagram code into the corresponding graph."""
 
     edges = []
@@ -217,7 +251,7 @@ def graph_from_pd_code(pd_code: list[int]):
     
     return graph
 
-def get_graphs(knots: list):
+def get_graphs(knots: dict[str, Knot]):
     """
         Takes in the processed data from the RDF file and converts them to Garbali graphs.
     """
@@ -226,24 +260,10 @@ def get_graphs(knots: list):
 
     # read all the PD codes
     for knot_id, knot in tqdm(knots.items(), desc="Constructing graphs..."):
-        code = knot[PD_CODE]
-        sym_type = knot[SYM_TYPE]
-
-        # generate non-equivalent codes depending on symmetry type
-        variants = []
-
-        transformations_to_do = NEEDED_PD_TRANSFORMS[sym_type]
+        code = knot.pd_code
         
-        # compute the transformed codes
-        for transform in transformations_to_do:
-            variants.append(transform(code))
-
-        # compute the associated graphs
-        for number, code in enumerate(variants):
-            graph = graph_from_pd_code(code)
-            graph.knot_id = f"{knot_id} v{number+1}"
-
-            # save the graph
-            graphs.append(graph)
+        graph = graph_from_pd_code(code)
+        graph.knot_id = knot_id
+        graphs.append(graph)
 
     return graphs
