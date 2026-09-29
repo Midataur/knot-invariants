@@ -20,9 +20,9 @@
 #SBATCH --cpus-per-task=3
 
 # Number of GPUs requested per node:
-#SBATCH --gres=gpu:2
+#SBATCH --gres=gpu:1
 # The amount of memory in megabytes per node:
-#SBATCH --mem=500000
+#SBATCH --mem=200000
 
 # Use this email address:
 #SBATCH --mail-user=mpetschack@student.unimelb.edu.au
@@ -50,7 +50,7 @@ fi
 module load CUDA/12.4.1
 
 # The job command(s):
-source ../venv/bin/activate
+source ./venv/bin/activate
 CUDA_LAUNCH_BLOCKING=1 accelerate launch ./core/main.py
 
 ##DO NOT ADD/EDIT BEYOND THIS LINE##
