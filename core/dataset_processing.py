@@ -1,11 +1,10 @@
 from graph_functions import color_function
 from collections import defaultdict as dd
 from collections.abc import Sequence
-from typing import NamedTuple
 from tqdm import tqdm
 from pd_utils import *
 from pd_transformations import *
-from utilities import *
+from constants_and_types import *
 import torch_geometric as tg
 import torch
 
@@ -35,15 +34,6 @@ VALID_SYM_TYPES = [
     "Positively amphicheiral",   # K =  K*, not actually in the database bc it's rare
     "Reversible"                 # K = -K
 ]
-
-class Knot(NamedTuple):
-    """
-        A bunch of data related to a knot.
-    """
-
-    knot_id: str
-    pd_code: list[int]
-    sym_type: str
 
 def process_PD(raw: str):
     """

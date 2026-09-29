@@ -1,5 +1,5 @@
-from config_object import ConfigObject
-from dataset_processing import Knot
+from constants_and_types import ConfigObject
+from constants_and_types import Knot
 from pd_utils import EDGES_PER_NODE
 import functools
 import mixer
@@ -13,13 +13,13 @@ hamiltonian = functools.partial(
     max_crossings = max_crossings
 )
 
-mixer = functools.partial(
+mixer_to_use = functools.partial(
     mixer.hamiltonian_mixer,
-    nsteps=n_mix_steps,
+    n_steps=n_mix_steps,
     hamiltonian=hamiltonian
 )
 
-NO_MORE_THAN = 10
+TRAIN_NO_MORE_THAN = 10
 
 # set up the train set decider
 def get_train_set(knots: list[Knot]):
@@ -28,15 +28,15 @@ def get_train_set(knots: list[Knot]):
     """
 
     return list(filter(
-        lambda x: len(x)//EDGES_PER_NODE <= NO_MORE_THAN,
+        lambda x: len(x.pd_code)//EDGES_PER_NODE <= TRAIN_NO_MORE_THAN,
         knots
     ))
 
 # the actual config object i'm using for this run.
 # documentation of parameter meanings can be found
-# in the config_object file.
+# in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "test-1",
+    model_name      = "transformed-LT10-1",
     model_type      = "BasicTransformer",
     raw_db_filename = "katlas.rdf",
     data_url        = "http://katlas.org/Data/katlas.rdf.gz",
@@ -44,24 +44,27 @@ CONFIG = ConfigObject(
     wandb_project   = "knot-simclr",
     random_seed     = 42,
 
-    extra_notes     = f"Only training on knots with at most {NO_MORE_THAN} crossings.",
+    extra_notes     = f"Only training on knots with at most {TRAIN_NO_MORE_THAN} crossings.",
 
     get_train_set   = get_train_set,
-    n_embed         = 402,
+    n_embed         = 406,
     n_heads         = 6,
     dropout         = 0,
-    n_blocks        = 8,
+    n_blocks        = 4,
+
+    proj_dim        = 406,
 
     max_crossings   = max_crossings,
     n_mix_steps     = n_mix_steps,
-    mixer           = mixer,
+    mixer_to_use    = mixer_to_use,
 
     learning_rate   = 3*(10**-5), 
     batchsize       = 8192, 
     weight_decay    = 0.001, 
     lr_factor       = 0.1, 
     lr_patience     = 10, 
-    threshold       = 0.01, 
+    threshold       = 0.01,
+    simclr_temp     = 1,
     n_workers       = 0
 )
 

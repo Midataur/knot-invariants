@@ -1,6 +1,6 @@
 from pd_utils import *
 from pd_transformations import *
-from utilities import *
+from constants_and_types import *
 from typing import NamedTuple
 from collections.abc import Callable
 import random
@@ -285,6 +285,8 @@ def hamiltonian_mixer(
 
             if return_full_history:
                 history.append(current_code)
+
+            assert len(current_code)//EDGES_PER_NODE == selected_move.num_crossings_after_application
         
             # sanity check, if requested
             if strict and not pd_code_is_valid(current_code, verbose=True):
@@ -296,3 +298,40 @@ def hamiltonian_mixer(
         return current_code, history
     
     return current_code
+
+def random_relabel_and_reorder(pd_code: list[int], max_crossings: int):
+    """
+        Preforms a random relabelling of the edges and a reordering of the crossings.
+    """
+
+    # sanity check
+    num_crossings_in_code = len(pd_code)//EDGES_PER_NODE
+    if num_crossings_in_code > max_crossings:
+        raise Exception(
+            f"The provided pd_code has {num_crossings_in_code} but max_crossings is {max_crossings}"
+        )
+
+    # put the code into standard form
+    pd_code = pd_canonical_form(pd_code)
+
+    # get a random edge label bijection
+    num_edge_labels_needed = max_crossings*2 # once incoming once outgoing
+    random_bijection = list(range(num_edge_labels_needed))
+    random.shuffle(random_bijection)
+
+    pd_code = [random_bijection[x] for x in pd_code]
+
+    # randomly reorder the nodes
+    num_nodes = len(pd_code)//EDGES_PER_NODE
+    nodes = [get_node(pd_code, x) for x in range(num_nodes)]
+
+    random.shuffle(nodes)
+
+    # flatten and return
+    rejoined = [
+        x
+        for node in nodes
+        for x in node
+    ]
+
+    return rejoined

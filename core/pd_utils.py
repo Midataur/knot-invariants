@@ -212,18 +212,6 @@ def next_free_edge_label(pd_code: list[int], amount: int = 1):
     
     return [next_avail + x for x in range(amount)]
 
-def reindex_code(pd_code: list[int]):
-    """
-        Takes in a pd_code and a deleted label.
-
-        Reindexes the edge labels to be zero-indexed and consecutive.
-    """
-
-    # list --> set --> list removes duplicates
-    current_labels = sorted(list(set(pd_code)))
-
-    return [current_labels.index(x) for x in pd_code]
-
 def delete_node(pd_code: list[int], node_number: int):
     """
         Deletes a node group from the code and reindexes the edges.

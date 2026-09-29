@@ -1,5 +1,5 @@
 from torch.nn import functional as F
-from config_object import ConfigObject
+from constants_and_types import ConfigObject, EDGES_PER_NODE
 import torch.nn as nn
 import torch
 
@@ -108,12 +108,12 @@ class BasicTransformer(nn.Module):
         self.config = config
 
         # derive some quantities
-        vocab_size = config.braid_count*2 - 1
-        context_length = config.max_word_length # this isn't always as simple
+        context_length, vocab_size = config.get_transformer_details()
 
         # extract some config variables
-        n_embed = config.n_embed
+        n_embed  = config.n_embed
         n_blocks = config.n_blocks
+        proj_dim = config.proj_dim
 
         # create embeddings
         self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
@@ -128,39 +128,32 @@ class BasicTransformer(nn.Module):
 
         self.blocks = nn.Sequential(*self.blocks)
 
-        # the output layer
-        # projects the final vector down to the output dimension
-        self.lm_head = nn.Linear(n_embed, vocab_size, bias=False)
-       
-        # we shouldn't use this during training, only generation
-        # this is because cross entropy loss already applies a softmax
-        # and we don't want to apply that twice
-        self.softmax = nn.Softmax(dim=1)
+        # the projection layer.
+        # applying a single MLP layer at the end improves the quality
+        # of the representation the layer before this (see original SimCLR paper section 4.2).
+        self.projection = nn.Sequential(
+            nn.Linear(n_embed, n_embed * 4, bias=True),
+            nn.ReLU(),
+            nn.Linear(n_embed * 4, proj_dim, bias=True),
+        )
 
-    def forward(self, idx):
-        B, T = idx.shape
+    def forward(self, input_tensor: torch.Tensor):
+        B, T = input_tensor.shape
 
         # idx and targets are both (B, T) tensor of integers
-        tok_emb = self.token_embedding_table(idx) #(B, T, C)
-        pos_emb = self.position_embedding(torch.arange(T, device=idx.device)) #(T, C)
+        tok_emb = self.token_embedding_table(input_tensor) # (B, T, C)
+        pos_emb = self.position_embedding(torch.arange(T, device=input_tensor.device)) # (T, C)
 
-        x = tok_emb + pos_emb #(B, T, C)
+        x = tok_emb + pos_emb # (B, T, C)
         x = self.embed_hook(x)
         
         x = self.blocks(x) # apply a bunch of blocks (sa + feedforward) (B, T, C)
 
-        logits = self.output_step(x)
+        # perform the projection step
+        logits = self.projection(x)
 
-        return logits
-
-    # this is abstracted into a different method to allow
-    # for different models to have different output steps
-    def output_step(self, x):
-        logits = self.lm_head(x) #(B, T, vocab_size)
-
-        # focus only on the last time step
-        logits = logits[:, -1:, :] # (B, vocab_size)
-        return logits
+        # collapse the transformer matrix
+        return torch.sum(logits, dim=0)
 
 MODELS = {
     "BasicTransformer": BasicTransformer

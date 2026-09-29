@@ -1,6 +1,34 @@
 from collections.abc import Callable, Sequence
-from dataset_processing import Knot
 from typing import NamedTuple
+
+CONFIG_FILE_NAME = "config.pickle"
+MODEL_FILE_NAME = "model.safetensors"
+
+# some standard conventions
+INCOMING = -1
+OUTGOING = 1
+
+STANDARD = -1
+REVERSED = 1
+
+UNDERCROSSING = -1
+OVERCROSSING = 1
+
+LEFT = -1
+RIGHT = 1   
+
+EDGES_PER_NODE = 4
+
+WANDB_LEGAL_TYPES = (int, str, list, float, bool)
+
+class Knot(NamedTuple):
+    """
+        A bunch of data related to a knot.
+    """
+
+    knot_id: str
+    pd_code: list[int]
+    sym_type: str
 
 def identity(knots: list[Knot]):
     return knots
@@ -15,7 +43,7 @@ class ConfigObject(NamedTuple):
     raw_db_filename: str      # the filename of the dataset to be used.
     data_url: str             # the url to recover the raw knot data from.
     wandb_project: str        # the name of the weights and biases project.
-    extra_note: str           # any extra details that might be useful to know later.
+    extra_notes: str          # any extra details that might be useful to know later.
     dataset_type: str         # the type of pytorch dataset to use, as in the datasets.py file.
      
     random_seed: int          # the seed for the random number generator
@@ -27,6 +55,9 @@ class ConfigObject(NamedTuple):
     n_blocks: int             # number of blocks to have. higher means a deeper network.
     n_heads: int | None       # the number of attention heads to have if we're using a transformer.
 
+    proj_dim: int             # the dimension to project down to for the SimCLR loss function.
+                              # this shouldn't be bigger than n_embed.
+
     # the next few are training parameters
 
     learning_rate: float      # good starting value: 3*10^-4.
@@ -36,9 +67,12 @@ class ConfigObject(NamedTuple):
     lr_patience: int          # how long to wait before declaring plateau. usually 10.
     threshold: float          # the threshold what counts as a plataeu. usually 0.01.
 
+    simclr_temp: float        # the temperature used in the simclr loss function.
+                              # i believe this should usually be set to 1.
+
     # the next few are mixer parameters
 
-    mixer: PDMixer            # the mixing function used to transform the pd codes. 
+    mixer_to_use: PDMixer     # the mixing function used to transform the pd codes. 
     max_crossings: int        # the maximum number of crossings allowed
     n_mix_steps: int          # the number of random reidemeister moves applied.
  
@@ -57,3 +91,54 @@ class ConfigObject(NamedTuple):
      
     PATH: str = ".."          # the folder path to work in. 
                               # should be ".." unless you're doing something weird.
+
+    def as_wandb_legal_dict(self):
+        """
+            Returns the named tuple as a dictionary (like :meth:`_asdict`),
+            but replace all the non-wandb-legal types with the string reps.
+        """
+
+        # get the dict rep
+        dict_rep = self._asdict()
+
+        # deal with illegal types
+        safe_dict = dict()
+
+        for key, value in dict_rep.items():
+            if type(value) in WANDB_LEGAL_TYPES or value is None:
+                # we're chilling
+                safe_dict[key] = value
+            else:
+                # we're not chilling
+                safe_dict[key] = str(value)
+
+        return safe_dict
+
+    def get_max_input_size(self):
+        """
+            
+        """
+
+    def get_transformer_details(self):
+        """
+            Returns `(maximum input size required, vocabulary size required)`
+            if we're using a transformer.
+        """
+        
+        max_input_size = self.max_crossings * EDGES_PER_NODE
+
+        # each label will appear twice in a max length code
+        # the +1 is for the special empty space token
+        vocab_size  = max_input_size//2 + 1
+        return (max_input_size, vocab_size)
+
+    def get_empty_token(self):
+        """
+            Returns the token used to pad the inputs. 
+            Can't ever represent an edge label.
+        """
+
+        _, vocab_size = self.get_transformer_details()
+
+        # this will always be the last token in the (zero-indexed) dictionary
+        return vocab_size-1

@@ -1,30 +1,37 @@
-from dataset_processing import get_knots, graph_from_pd_code, Knot
+from dataset_processing import get_knots
 from torch.utils.data import Dataset, DataLoader
-from config_object import ConfigObject
+from constants_and_types import ConfigObject, Knot
+from utilities import pad_list
 import pd_transformations
 import urllib.request
 import random
-import pd_utils
 import torch
 import shutil
+import mixer
 import gzip
 import os
 
 class KnotDataWithTransforms(Dataset):
     def __init__(self, config: ConfigObject, seed_knots: list[Knot]):
         # save the data
-        self.max_input_size = self.config.max_crossings*pd_utils.EDGES_PER_NODE
+        self.max_crossings = config.max_crossings
         self.seed_knots = seed_knots
 
+        # derived quantities
+        self.max_input_size, _ = config.get_transformer_details()
+        self.empty_token = config.get_empty_token()
+
         # save the mixer
-        self.mixer = config.mixer
+        self.mixer_to_use = config.mixer_to_use
 
     def __len__(self):
         return len(self.seed_knots)
 
-    def __getitem__(self, index):
+    def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
+        elif type(idx) is int:
+            idx = [idx]
 
         # get the requested knots
         relevant_knots: list[Knot] = [self.seed_knots[index] for index in idx]
@@ -34,17 +41,29 @@ class KnotDataWithTransforms(Dataset):
 
         # get the transformed pairs
         for knot in relevant_knots:
-            original_codes.append(knot.pd_code)
+            # apply a random relabelling to avoid bias
+            relabelled_og = mixer.random_relabel_and_reorder(knot.pd_code, self.max_crossings)
+
+            # save the relabelled code with padding
+            original_codes.append(pad_list(
+                relabelled_og , self.max_input_size, self.empty_token
+            ))
 
             # mix up the diagram
-            transformed_code = self.mixer(knot.pd_code)
+            transformed_code = self.mixer_to_use(knot.pd_code)
             
             # apply a random valid symmetry
             sym_group = pd_transformations.SYMMETRY_GROUP[knot.sym_type]
             chosen_sym = random.choice(sym_group)
             transformed_code = chosen_sym(transformed_code)
         
-            transformed_codes.append(transformed_code)
+            # apply a random relabelling to avoid bias
+            relabelled_transform = mixer.random_relabel_and_reorder(transformed_code, self.max_crossings)
+
+            # save the relabelled code with padding
+            transformed_codes.append(pad_list(
+                relabelled_transform , self.max_input_size, self.empty_token
+            ))
 
         original_codes    = torch.tensor(original_codes,    dtype=int)
         transformed_codes = torch.tensor(transformed_codes, dtype=int)
@@ -101,12 +120,12 @@ def get_dataset_and_loader(config: ConfigObject, verbose=False):
     all_knots = list(get_knots(db_filename).values())
 
     # filter to only requested
-    all_knots = config.get_train_set(all_knots)
+    seed_knots = config.get_train_set(all_knots)
 
     # create the dataset and loader
     DataSetType = DATASET_TYPES[config.dataset_type]
 
-    dataset = DataSetType(config)
+    dataset = DataSetType(config, seed_knots=seed_knots)
 
     batchsize, n_workers = config.batchsize, config.n_workers
     dataloader = DataLoader(dataset, batch_size=batchsize, num_workers=n_workers, shuffle=True)

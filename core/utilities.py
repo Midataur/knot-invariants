@@ -1,28 +1,12 @@
 from accelerate import load_checkpoint_and_dispatch
 from collections import defaultdict as dd
 from collections.abc import Iterable
-import torch
+from accelerate import Accelerator
+from constants_and_types import *
 import model_types
+import torch
 import pickle
 import os
-
-CONFIG_FILE_NAME = "config.pickle"
-MODEL_FILE_NAME = "model.safetensors"
-
-# some standard conventions
-INCOMING = -1
-OUTGOING = 1
-
-STANDARD = -1
-REVERSED = 1
-
-UNDERCROSSING = -1
-OVERCROSSING = 1
-
-LEFT = -1
-RIGHT = 1   
-
-EDGES_PER_NODE = 4
 
 ### ML RELATED ###
 
@@ -32,8 +16,8 @@ def save_model_and_config(model, config, accelerator):
     """
     # define save location
     path = config.PATH
-    modelname = config.modelname
-    save_directory = f"{path}/model_saves/{modelname}"
+    model_name = config.model_name
+    save_directory = f"{path}/model_saves/{model_name}"
 
     # save the model
     accelerator.save_model(model, f"{save_directory}")
@@ -53,8 +37,8 @@ def try_loading_model(config, surgery_func=None):
 
     # define save location
     path = config.PATH
-    modelname = config.modelname
-    save_directory = f"{path}/model_saves/{modelname}"
+    model_name = config.model_name
+    save_directory = f"{path}/model_saves/{model_name}"
 
     # check if the config exists and load it
     config_file_path = f"{save_directory}/{CONFIG_FILE_NAME}"
@@ -96,6 +80,59 @@ def format_for_pytorch_geo(to_format, new_shape=None, new_type=torch.float):
         tensor = tensor.reshape(new_shape)
     
     return tensor.t().contiguous().type(new_type)
+
+class SimCLRLoss(torch.nn.Module):
+    """
+        An implementation of the SimCLR loss function from Chen et al (2020).
+
+        Note: the paper calls this NT-Xent (normalised temperature scaled cross-entropy loss).
+    """
+
+    def __init__(self, temperature: float):
+        super().__init__()
+
+        # save the paramters for later
+        self.temperature = temperature
+
+    def forward(self, originals: torch.Tensor, transformed: torch.Tensor) -> torch.Tensor:
+        """
+            Assumes that `originals` and `transformed` are tensors of shape `(B,E)`, where
+            `B` is the batch-size and `E` is the final embedding dimension.
+        """
+        # concatenate into one matrix
+        combined = torch.cat((originals, transformed))
+
+        # compute normalised dot-product similarity
+        row_normalised = torch.nn.functional.normalize(combined) # (2B, E)
+        similarities =  row_normalised @ row_normalised.transpose(0, 1) # (2B, 2B)
+
+        # scale the similarities by the temperature
+        similarities = similarities/self.temperature # (2B, 2B)
+
+        # compute the l_{i,j} matrix from the paper
+        exponentiated = torch.exp(similarities) # (2B, 2B)
+        
+        mask = (
+                torch.ones(exponentiated.shape, device=originals.device) 
+                - torch.eye(exponentiated.shape[0], device=originals.device)
+        ) # (2B, 2B)
+
+        denominator = exponentiated @ mask # (2B, 2B)
+
+        l_ij = -torch.log(torch.div(exponentiated, denominator))
+
+        # compute the total loss (sum across positive pairs)
+        B = originals.shape[0]
+        upper_diag_mask = (
+            torch.diagflat(torch.ones(B, device=originals.device), offset=B)
+            +torch.diagflat(torch.ones(B, device=originals.device), offset=-B)
+        ) # (2B, 2B)
+
+        loss = (l_ij*upper_diag_mask).sum()/(2*B)
+
+        return loss
+
+### NON-ML ###
 
 def size_signature(set_to_count: set):
     """
@@ -230,3 +267,13 @@ def unzip(iterable: Iterable, num_lists_expected: int = 2):
             final_lists[pos].append(x)
 
     return final_lists
+
+def pad_list(list_to_pad: list, desired_length: int, padding_element=0):
+    """
+        Pads a list to be a desired length. 
+        Assumes that `len(list_to_pad) <= desired_length` already.
+    """
+
+    remaining_length = desired_length - len(list_to_pad)
+
+    return list_to_pad + [padding_element for x in range(remaining_length)]
