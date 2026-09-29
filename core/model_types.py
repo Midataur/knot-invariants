@@ -150,10 +150,10 @@ class BasicTransformer(nn.Module):
         x = self.blocks(x) # apply a bunch of blocks (sa + feedforward) (B, T, C)
 
         # perform the projection step
-        logits = self.projection(x)
+        logits = self.projection(x) # (B, T, proj_dim)
 
         # collapse the transformer matrix
-        return torch.sum(logits, dim=0)
+        return torch.sum(logits, dim=1)
 
 MODELS = {
     "BasicTransformer": BasicTransformer
