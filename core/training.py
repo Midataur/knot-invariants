@@ -125,7 +125,9 @@ def train(config: ConfigObject):
             model.eval()
 
             # finds the loss if we had perfect orthogonality
-            orthogonal_loss = loss_function(torch.eye(num_rows), torch.eye(num_rows))
+            orthogonal_loss = loss_function(
+                torch.eye(num_rows), torch.eye(num_rows)
+            ).item()
 
         train_loss = total_loss / num_batches
 
