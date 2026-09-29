@@ -36,7 +36,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "small-knots-3",
+    model_name      = "small-knots-4",
     model_type      = "BasicTransformer",
     raw_db_filename = "katlas.rdf",
     data_url        = "http://katlas.org/Data/katlas.rdf.gz",
@@ -50,7 +50,7 @@ CONFIG = ConfigObject(
     n_embed         = 600,
     n_heads         = 6,
     dropout         = 0,
-    n_blocks        = 4,
+    n_blocks        = 8,
 
     proj_dim        = 402,
 

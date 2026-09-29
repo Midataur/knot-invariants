@@ -125,18 +125,19 @@ def train(config: ConfigObject):
             model.eval()
 
             # finds the loss if we had perfect orthogonality
+            n_needed = originals_embedded.shape[0]
+            
             orthogonal_loss = loss_function(
-                torch.eye(num_rows), torch.eye(num_rows)
+                torch.eye(n_needed), torch.eye(n_needed)
             ).item()
-
-            print("\n\n",orthogonal_loss,"\n\n")
 
         train_loss = total_loss / num_batches
 
         metrics = {
             "loss": train_loss,
             "tensor_shape": originals_embedded.shape,
-            "orthogonal_loss": orthogonal_loss
+            "orthogonal_loss": orthogonal_loss,
+            "n_needed": n_needed
         }
 
         # to show how fast we're plateauing
