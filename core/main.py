@@ -65,7 +65,9 @@ CONFIG = ConfigObject(
     lr_patience     = 10, 
     threshold       = 0.01,
     simclr_temp     = 1,
-    n_workers       = 0
+    n_workers       = 0,
+
+    PATH            = "."
 )
 
 # sanity check
