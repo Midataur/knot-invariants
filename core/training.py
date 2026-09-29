@@ -123,7 +123,8 @@ def train(config: ConfigObject):
         train_loss = total_loss / num_batches
 
         metrics = {
-            "loss": train_loss
+            "loss": train_loss,
+            "tensor_shape": originals_embedded.shape
         }
 
         # to show how fast we're plateauing
