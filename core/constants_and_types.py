@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import NamedTuple
+from typing import NamedTuple, TypeAlias
 
 CONFIG_FILE_NAME = "config.pickle"
 MODEL_FILE_NAME = "model.safetensors"
@@ -33,7 +33,7 @@ class Knot(NamedTuple):
 def identity(knots: list[Knot]):
     return knots
 
-type PDMixer = Callable[[Sequence[int]], Sequence[int]]
+PDMixer: TypeAlias = Callable[[Sequence[int]], Sequence[int]]
 
 # @dataclass
 class ConfigObject(NamedTuple):
