@@ -48,6 +48,9 @@ fi
 
 # The modules to load:
 module load CUDA/12.4.1
+module load GCCcore/13.3.0
+module load XZ/5.4.5
+module load Python/3.14.2
 
 # The job command(s):
 source ./venv/bin/activate

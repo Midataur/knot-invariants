@@ -47,7 +47,7 @@ CONFIG = ConfigObject(
     extra_notes     = f"Only training on knots with at most {TRAIN_NO_MORE_THAN} crossings.",
 
     get_train_set   = get_train_set,
-    n_embed         = 406,
+    n_embed         = 402,
     n_heads         = 6,
     dropout         = 0,
     n_blocks        = 4,
