@@ -129,6 +129,8 @@ def train(config: ConfigObject):
                 torch.eye(num_rows), torch.eye(num_rows)
             ).item()
 
+            print("\n\n",orthogonal_loss,"\n\n")
+
         train_loss = total_loss / num_batches
 
         metrics = {
