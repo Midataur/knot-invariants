@@ -5,7 +5,7 @@ import functools
 import mixer
 
 # set up the mixer
-max_crossings = 10
+max_crossings = 11
 n_mix_steps = 0
 
 hamiltonian = functools.partial(
@@ -19,7 +19,7 @@ mixer_to_use = functools.partial(
     hamiltonian=hamiltonian
 )
 
-TRAIN_NO_MORE_THAN = 10
+TRAIN_NO_MORE_THAN = 11
 
 # set up the train set decider
 def get_train_set(knots: list[Knot]):
@@ -36,7 +36,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "no-mixing-7",
+    model_name      = "no-mixing-LT11-1",
     model_type      = "BasicTransformer",
     raw_db_filename = "katlas.rdf",
     data_url        = "http://katlas.org/Data/katlas.rdf.gz",
