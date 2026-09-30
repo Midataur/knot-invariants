@@ -94,10 +94,9 @@ class SimCLRLoss(torch.nn.Module):
         # save the paramters for later
         self.temperature = temperature
 
-    def forward(self, originals: torch.Tensor, transformed: torch.Tensor) -> torch.Tensor:
+    def calculate_similarities(self, originals: torch.Tensor, transformed: torch.Tensor) -> torch.Tensor:
         """
-            Assumes that `originals` and `transformed` are tensors of shape `(B,E)`, where
-            `B` is the batch-size and `E` is the final embedding dimension.
+            Calculates the normalised dot product similarity matrix.
         """
         # concatenate into one matrix
         combined = torch.cat((originals, transformed))
@@ -106,7 +105,14 @@ class SimCLRLoss(torch.nn.Module):
         row_normalised = torch.nn.functional.normalize(combined) # (2B, E)
         similarities =  row_normalised @ row_normalised.transpose(0, 1) # (2B, 2B)
 
-        print(similarities)
+        return similarities
+
+    def forward(self, originals: torch.Tensor, transformed: torch.Tensor) -> torch.Tensor:
+        """
+            Assumes that `originals` and `transformed` are tensors of shape `(B,E)`, where
+            `B` is the batch-size and `E` is the final embedding dimension.
+        """
+        similarities = self.calculate_similarities(originals, transformed)
 
         # scale the similarities by the temperature
         similarities = similarities/self.temperature # (2B, 2B) 

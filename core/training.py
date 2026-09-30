@@ -141,7 +141,10 @@ def train(config: ConfigObject):
             "loss": train_loss,
             "tensor_shape": originals_embedded.shape,
             "orthogonal_loss": orthogonal_loss,
-            "all_aligned_loss": all_aligned_loss
+            "all_aligned_loss": all_aligned_loss,
+            "similarity_matrix": loss.calculate_similarities(
+                originals_embedded, transformed_embedded
+            ).tolist()
         }
 
         # to show how fast we're plateauing
