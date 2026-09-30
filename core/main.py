@@ -36,7 +36,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "no-mixing-LT11-2",
+    model_name      = "no-mixing-LT11-3",
     model_type      = "BasicTransformer",
     raw_db_filename = "katlas.rdf",
     data_url        = "http://katlas.org/Data/katlas.rdf.gz",
@@ -64,7 +64,7 @@ CONFIG = ConfigObject(
     lr_factor       = 0.1, 
     lr_patience     = 10, 
     threshold       = 0.01,
-    simclr_temp     = 0.1,
+    simclr_temp     = 0.05,
     n_workers       = 0,
 
     PATH            = "."
