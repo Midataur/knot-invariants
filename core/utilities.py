@@ -106,10 +106,10 @@ class SimCLRLoss(torch.nn.Module):
         row_normalised = torch.nn.functional.normalize(combined) # (2B, E)
         similarities =  row_normalised @ row_normalised.transpose(0, 1) # (2B, 2B)
 
-        # scale the similarities by the temperature
-        similarities = similarities/self.temperature # (2B, 2B)
-
         print(similarities)
+
+        # scale the similarities by the temperature
+        similarities = similarities/self.temperature # (2B, 2B) 
 
         # compute the l_{i,j} matrix from the paper
         exponentiated = torch.exp(similarities) # (2B, 2B)
