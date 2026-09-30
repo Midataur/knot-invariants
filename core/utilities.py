@@ -276,11 +276,15 @@ def unzip(iterable: Iterable, num_lists_expected: int = 2):
 
     return final_lists
 
-def pad_list(list_to_pad: list, desired_length: int, padding_element=0):
+def pad_list(list_to_pad: list, desired_length: int, padding_element=0, strict=False):
     """
         Pads a list to be a desired length. 
         Assumes that `len(list_to_pad) <= desired_length` already.
     """
+
+    # sanity check
+    if len(list_to_pad) > desired_length:
+        raise Exception(f"Expected list of at most length {desired_length} but got one of length {len(list_to_pad)}")
 
     remaining_length = desired_length - len(list_to_pad)
 
