@@ -5,8 +5,8 @@ import functools
 import mixer
 
 # set up the mixer
-max_crossings = 20
-n_mix_steps = 10
+max_crossings = 10
+n_mix_steps = 0
 
 hamiltonian = functools.partial(
     mixer.crossing_hamiltonian_with_cutoff,
@@ -36,7 +36,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "larger-knots-2",
+    model_name      = "no-mixing-1",
     model_type      = "BasicTransformer",
     raw_db_filename = "katlas.rdf",
     data_url        = "http://katlas.org/Data/katlas.rdf.gz",
