@@ -60,7 +60,6 @@ CONFIG = ConfigObject(
 
     learning_rate   = 3*(10**-5), 
     batchsize       = 8192, 
-    weight_decay    = 0.01, 
     weight_decay    = 0.1, 
     lr_factor       = 0.1, 
     lr_patience     = 10, 
