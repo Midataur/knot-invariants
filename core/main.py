@@ -64,7 +64,7 @@ CONFIG = ConfigObject(
     lr_factor       = 0.1, 
     lr_patience     = 10, 
     threshold       = 0.01,
-    simclr_temp     = 0.01,
+    simclr_temp     = 0.1,
     n_workers       = 0,
 
     PATH            = "."
