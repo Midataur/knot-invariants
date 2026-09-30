@@ -1,6 +1,6 @@
 from constants_and_types import ConfigObject
 from constants_and_types import Knot
-from pd_utils import EDGES_PER_NODE
+from pd_utils import EDGES_PER_NODE, pd_canonical_form
 import functools
 import mixer
 
@@ -13,13 +13,11 @@ hamiltonian = functools.partial(
     max_crossings = max_crossings
 )
 
-identity = lambda x: x
-
 mixer_to_use = functools.partial(
     mixer.hamiltonian_mixer,
     n_steps=n_mix_steps,
     hamiltonian=hamiltonian,
-    end_step=identity
+    end_step=pd_canonical_form
 )
 
 TRAIN_NO_MORE_THAN = 10
