@@ -36,7 +36,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "1-move-LT10-1",
+    model_name      = "1-move-LT10-2",
     model_type      = "BasicTransformer",
     raw_db_filename = "katlas.rdf",
     data_url        = "http://katlas.org/Data/katlas.rdf.gz",
@@ -47,10 +47,10 @@ CONFIG = ConfigObject(
     extra_notes     = f"Only training on knots with at most {TRAIN_NO_MORE_THAN} crossings.",
 
     get_train_set   = get_train_set,
-    n_embed         = 900,
+    n_embed         = 600,
     n_heads         = 6,
     dropout         = 0,
-    n_blocks        = 24,
+    n_blocks        = 8,
 
     proj_dim        = 600,
 
