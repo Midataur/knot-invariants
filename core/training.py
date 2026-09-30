@@ -142,7 +142,7 @@ def train(config: ConfigObject):
             "tensor_shape": originals_embedded.shape,
             "orthogonal_loss": orthogonal_loss,
             "all_aligned_loss": all_aligned_loss,
-            "similarity_matrix": loss.calculate_similarities(
+            "similarity_matrix": loss_function.calculate_similarities(
                 originals_embedded, transformed_embedded
             ).tolist()
         }
