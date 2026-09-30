@@ -131,29 +131,33 @@ class BasicTransformer(nn.Module):
         # the projection layer.
         # applying a single MLP layer at the end improves the quality
         # of the representation the layer before this (see original SimCLR paper section 4.2).
+        aggregated_dim = context_length*n_embed
+
         self.projection = nn.Sequential(
-            nn.Linear(n_embed, n_embed * 4, bias=True),
+            nn.Linear(aggregated_dim, aggregated_dim * 4, bias=True),
             nn.ReLU(),
-            nn.Linear(n_embed * 4, proj_dim, bias=True),
+            nn.Linear(aggregated_dim * 4, proj_dim, bias=True),
         )
 
     def forward(self, input_tensor: torch.Tensor):
-        B, T = input_tensor.shape
+        batch, input_length = input_tensor.shape
 
-        # idx and targets are both (B, T) tensor of integers
-        tok_emb = self.token_embedding_table(input_tensor) # (B, T, C)
-        pos_emb = self.position_embedding(torch.arange(T, device=input_tensor.device)) # (T, C)
+        # idx and targets are both (batch, input_length) tensor of integers
+        tok_emb = self.token_embedding_table(input_tensor) # (batch, input_length, embedding)
+        pos_emb = self.position_embedding(torch.arange(T, device=input_tensor.device)) # (input_length, embedding)
 
-        x = tok_emb + pos_emb # (B, T, C)
+        x = tok_emb + pos_emb # (batch, input_length, embedding)
         x = self.embed_hook(x)
         
-        x = self.blocks(x) # apply a bunch of blocks (sa + feedforward) (B, T, C)
+        x = self.blocks(x) # apply a bunch of blocks (sa + feedforward) (batch, input_length, embedding)
+
+        # reshape the matrix to be a vector
+        x = x.reshape((batch, -1)) # (batch, input_length * embedding)
 
         # perform the projection step
-        logits = self.projection(x) # (B, T, proj_dim)
+        logits = self.projection(x) # (batch, proj_dim)
 
-        # collapse the transformer matrix
-        return torch.sum(logits, dim=1)
+        return logits
 
 MODELS = {
     "BasicTransformer": BasicTransformer
