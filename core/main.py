@@ -52,7 +52,7 @@ CONFIG = ConfigObject(
     dropout         = 0,
     n_blocks        = 12,
 
-    proj_dim        = 402,
+    proj_dim        = 600,
 
     max_crossings   = max_crossings,
     n_mix_steps     = n_mix_steps,
