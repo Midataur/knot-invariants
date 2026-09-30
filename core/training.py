@@ -5,6 +5,7 @@ from constants_and_types import ConfigObject
 from torch_datasets import get_dataset_and_loader
 from accelerate import Accelerator
 from tqdm.auto import tqdm
+import plotly.express as px
 import torch.optim as optim
 import math
 import torch
@@ -137,14 +138,17 @@ def train(config: ConfigObject):
 
         train_loss = total_loss / num_batches
 
+        # log the similarity matrix
+        similarity_matrix = loss_function.calculate_similarities(
+            originals_embedded, transformed_embedded
+        ).tolist()
+
         metrics = {
             "loss": train_loss,
             "tensor_shape": originals_embedded.shape,
             "orthogonal_loss": orthogonal_loss,
             "all_aligned_loss": all_aligned_loss,
-            "similarity_matrix": loss_function.calculate_similarities(
-                originals_embedded, transformed_embedded
-            ).tolist()
+            "similarity_matrix": px.imshow(similarity_matrix, zmin=-1, zmax=1)
         }
 
         # to show how fast we're plateauing
