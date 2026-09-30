@@ -134,9 +134,9 @@ class BasicTransformer(nn.Module):
         aggregated_dim = context_length*n_embed
 
         self.projection = nn.Sequential(
-            nn.Linear(aggregated_dim, aggregated_dim * 4, bias=True),
+            nn.Linear(aggregated_dim, aggregated_dim, bias=True),
             nn.ReLU(),
-            nn.Linear(aggregated_dim * 4, proj_dim, bias=True),
+            nn.Linear(aggregated_dim, proj_dim, bias=True),
         )
 
     def forward(self, input_tensor: torch.Tensor):
