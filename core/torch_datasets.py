@@ -1,7 +1,7 @@
 from dataset_processing import get_knots
 from torch.utils.data import Dataset, DataLoader
 from constants_and_types import ConfigObject, Knot
-from utilities import pad_list
+from utilities import pad_list, unzip
 import pd_transformations
 import urllib.request
 import random
@@ -36,41 +36,37 @@ class KnotDataWithTransforms(Dataset):
         # get the requested knots
         relevant_knots: list[Knot] = [self.seed_knots[index] for index in idx]
 
-        original_codes    = []
-        transformed_codes = []
+        pairs = []
 
         # get the transformed pairs
         for knot in relevant_knots:
-            # apply a random relabelling to avoid bias
-            relabelled_og = mixer.random_relabel_and_reorder(knot.pd_code, self.max_crossings)
+            pair = []
 
-            # save the relabelled code with padding
-            original_codes.append(pad_list(
-                relabelled_og , self.max_input_size, self.empty_token
-            ))
+            for x in range(2):
+                # mix up the diagram
+                transformed_code = self.mixer_to_use(knot.pd_code)
+                
+                # apply a random valid symmetry
+                sym_group = pd_transformations.SYMMETRY_GROUP[knot.sym_type]
+                chosen_sym = random.choice(sym_group)
+                transformed_code = chosen_sym(transformed_code)
 
-            # mix up the diagram
-            transformed_code = self.mixer_to_use(knot.pd_code)
+                # save the relabelled code with padding
+                pair.append(pad_list(
+                    transformed_code, self.max_input_size, self.empty_token
+                ))
             
-            # apply a random valid symmetry
-            sym_group = pd_transformations.SYMMETRY_GROUP[knot.sym_type]
-            chosen_sym = random.choice(sym_group)
-            transformed_code = chosen_sym(transformed_code)
-        
-            # apply a random relabelling to avoid bias
-            relabelled_transform = mixer.random_relabel_and_reorder(transformed_code, self.max_crossings)
+            pairs.append(pair)
 
-            # save the relabelled code with padding
-            transformed_codes.append(pad_list(
-                relabelled_transform , self.max_input_size, self.empty_token
-            ))
+        # unzip the pairs
+        first_codes, second_codes = unzip(pairs)
 
-        original_codes    = torch.tensor(original_codes,    dtype=int)
-        transformed_codes = torch.tensor(transformed_codes, dtype=int)
+        first_codes  = torch.tensor(first_codes,  dtype=int)
+        second_codes = torch.tensor(second_codes, dtype=int)
 
         return (
-            original_codes,
-            transformed_codes
+            first_codes,
+            second_codes
         )
     
     def save(self, location):

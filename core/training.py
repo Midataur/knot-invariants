@@ -97,22 +97,22 @@ def train(config: ConfigObject):
 
         accelerator.print("Training...")
         
-        for originals, transformed in tqdm(dataloader, disable=not accelerator.is_local_main_process):
+        for first, second in tqdm(dataloader, disable=not accelerator.is_local_main_process):
             # get rid of the weird third dimension that gets addded for some reason
-            num_rows, _, __   = originals.shape
+            num_rows, _, __   = first.shape
             
-            original_codes    = originals.reshape((num_rows, -1))
-            transformed_codes = transformed.reshape((num_rows, -1))
+            first_codes  = first.reshape((num_rows, -1))
+            second_codes = second.reshape((num_rows, -1))
 
             # zero the gradients
             optimizer.zero_grad()  
 
             # calculate the embeddings
-            originals_embedded   = model(original_codes)
-            transformed_embedded = model(transformed_codes)
+            first_embedded = model(first_codes)
+            second_embedded = model(second_codes)
 
             # get the loss
-            loss = loss_function(originals_embedded, transformed_embedded)
+            loss = loss_function(first_embedded, second_embedded)
 
             # do backprop
             accelerator.backward(loss)
@@ -140,12 +140,12 @@ def train(config: ConfigObject):
 
         # log the similarity matrix
         similarity_matrix = loss_function.calculate_similarities(
-            originals_embedded, transformed_embedded
+            first_embedded, second_embedded
         ).tolist()
 
         metrics = {
             "loss": train_loss,
-            "tensor_shape": originals_embedded.shape,
+            "tensor_shape": first_embedded.shape,
             "orthogonal_loss": orthogonal_loss,
             "all_aligned_loss": all_aligned_loss,
             "similarity_matrix": px.imshow(similarity_matrix, zmin=0, zmax=1)

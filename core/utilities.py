@@ -94,12 +94,12 @@ class SimCLRLoss(torch.nn.Module):
         # save the paramters for later
         self.temperature = temperature
 
-    def calculate_similarities(self, originals: torch.Tensor, transformed: torch.Tensor) -> torch.Tensor:
+    def calculate_similarities(self, first: torch.Tensor, second: torch.Tensor) -> torch.Tensor:
         """
             Calculates the normalised dot product similarity matrix.
         """
         # concatenate into one matrix
-        combined = torch.cat((originals, transformed))
+        combined = torch.cat((first, second))
 
         # compute normalised dot-product similarity
         row_normalised = torch.nn.functional.normalize(combined) # (2B, E)
@@ -107,12 +107,12 @@ class SimCLRLoss(torch.nn.Module):
 
         return similarities
 
-    def forward(self, originals: torch.Tensor, transformed: torch.Tensor) -> torch.Tensor:
+    def forward(self, first: torch.Tensor, second: torch.Tensor) -> torch.Tensor:
         """
-            Assumes that `originals` and `transformed` are tensors of shape `(B,E)`, where
+            Assumes that `first` and `second` are tensors of shape `(B,E)`, where
             `B` is the batch-size and `E` is the final embedding dimension.
         """
-        similarities = self.calculate_similarities(originals, transformed)
+        similarities = self.calculate_similarities(first, second)
 
         # scale the similarities by the temperature
         similarities = similarities/self.temperature # (2B, 2B) 
@@ -121,8 +121,8 @@ class SimCLRLoss(torch.nn.Module):
         exponentiated = torch.exp(similarities) # (2B, 2B)
         
         mask = (
-                torch.ones(exponentiated.shape, device=originals.device) 
-                - torch.eye(exponentiated.shape[0], device=originals.device)
+                torch.ones(exponentiated.shape, device=first.device) 
+                - torch.eye(exponentiated.shape[0], device=first.device)
         ) # (2B, 2B)
 
         denominator = exponentiated @ mask # (2B, 2B)
@@ -130,10 +130,10 @@ class SimCLRLoss(torch.nn.Module):
         l_ij = -torch.log(torch.div(exponentiated, denominator))
 
         # compute the total loss (sum across positive pairs)
-        B = originals.shape[0]
+        B = first.shape[0]
         upper_diag_mask = (
-            torch.diagflat(torch.ones(B, device=originals.device), offset=B)
-            +torch.diagflat(torch.ones(B, device=originals.device), offset=-B)
+            torch.diagflat(torch.ones(B, device=first.device), offset=B)
+            +torch.diagflat(torch.ones(B, device=first.device), offset=-B)
         ) # (2B, 2B)
 
         loss = (l_ij*upper_diag_mask).sum()/(2*B)
