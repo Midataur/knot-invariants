@@ -6,6 +6,7 @@ from torch_datasets import get_dataset_and_loader
 from accelerate import Accelerator
 from tqdm.auto import tqdm
 import torch.optim as optim
+import math
 import torch
 import random
 import wandb
@@ -120,24 +121,27 @@ def train(config: ConfigObject):
             total_loss += loss.item()
             num_batches += 1
 
-        # # get a baseline loss
-        # with torch.no_grad():
-        #     model.eval()
+        # find what the loss would be if we had perfect orthogonality
+        orthogonal_loss = -math.log(
+            math.exp(1/config.simclr_temp)/(
+                math.exp(1/config.simclr_temp) + 2*(num_rows-1)
+            )
+        )
 
-        #     # finds the loss if we had perfect orthogonality
-        #     n_needed = originals_embedded.shape[0]
-
-        #     orthogonal_loss = loss_function(
-        #         torch.eye(n_needed), torch.eye(n_needed)
-        #     ).item()
+        # find what the loss would be if everything was the same vector
+        all_aligned_loss = -math.log(
+            math.exp(1/config.simclr_temp)/(
+                math.exp(1/config.simclr_temp)*(2*num_rows-1)
+            )
+        )
 
         train_loss = total_loss / num_batches
 
         metrics = {
             "loss": train_loss,
             "tensor_shape": originals_embedded.shape,
-            #"orthogonal_loss": orthogonal_loss,
-            #"n_needed": n_needed
+            "orthogonal_loss": orthogonal_loss,
+            "all_aligned_loss": all_aligned_loss
         }
 
         # to show how fast we're plateauing

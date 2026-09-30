@@ -143,19 +143,22 @@ class BasicTransformer(nn.Module):
         batch, input_length = input_tensor.shape
 
         # idx and targets are both (batch, input_length) tensor of integers
-        tok_emb = self.token_embedding_table(input_tensor) # (batch, input_length, embedding)
-        pos_emb = self.position_embedding(torch.arange(T, device=input_tensor.device)) # (input_length, embedding)
+        tok_emb = self.token_embedding_table(input_tensor)                   # (batch, input_length, embedding)
+        pos_emb = self.position_embedding(
+            torch.arange(input_length, device=input_tensor.device)           # (input_length, embedding)
+        ) 
 
-        x = tok_emb + pos_emb # (batch, input_length, embedding)
+        x = tok_emb + pos_emb                                                # (batch, input_length, embedding)
         x = self.embed_hook(x)
         
-        x = self.blocks(x) # apply a bunch of blocks (sa + feedforward) (batch, input_length, embedding)
+        # apply a bunch of blocks (sa + feedforward)
+        x = self.blocks(x)                                                   # (batch, input_length, embedding)
 
         # reshape the matrix to be a vector
-        x = x.reshape((batch, -1)) # (batch, input_length * embedding)
+        x = x.reshape((batch, -1))                                           # (batch, input_length * embedding)
 
         # perform the projection step
-        logits = self.projection(x) # (batch, proj_dim)
+        logits = self.projection(x)                                          # (batch, proj_dim)
 
         return logits
 
