@@ -5,7 +5,7 @@ import functools
 import mixer
 
 # set up the mixer
-max_crossings = 10
+max_crossings = 20
 n_mix_steps = 10
 
 hamiltonian = functools.partial(
@@ -19,7 +19,7 @@ mixer_to_use = functools.partial(
     hamiltonian=hamiltonian
 )
 
-TRAIN_NO_MORE_THAN = 5
+TRAIN_NO_MORE_THAN = 10
 
 # set up the train set decider
 def get_train_set(knots: list[Knot]):
@@ -36,7 +36,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "small-knots-18",
+    model_name      = "larger-knots-1",
     model_type      = "BasicTransformer",
     raw_db_filename = "katlas.rdf",
     data_url        = "http://katlas.org/Data/katlas.rdf.gz",
@@ -47,10 +47,10 @@ CONFIG = ConfigObject(
     extra_notes     = f"Only training on knots with at most {TRAIN_NO_MORE_THAN} crossings.",
 
     get_train_set   = get_train_set,
-    n_embed         = 3000,
+    n_embed         = 402,
     n_heads         = 6,
     dropout         = 0,
-    n_blocks        = 16,
+    n_blocks        = 4,
 
     proj_dim        = 402,
 
@@ -60,11 +60,11 @@ CONFIG = ConfigObject(
 
     learning_rate   = 3*(10**-5), 
     batchsize       = 8192, 
-    weight_decay    = 0.001, 
+    weight_decay    = 0.01, 
     lr_factor       = 0.1, 
     lr_patience     = 10, 
     threshold       = 0.01,
-    simclr_temp     = 0.05,
+    simclr_temp     = 0.01,
     n_workers       = 0,
 
     PATH            = "."
