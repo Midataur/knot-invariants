@@ -148,7 +148,7 @@ def train(config: ConfigObject):
             "tensor_shape": originals_embedded.shape,
             "orthogonal_loss": orthogonal_loss,
             "all_aligned_loss": all_aligned_loss,
-            "similarity_matrix": px.imshow(similarity_matrix, zmin=-1, zmax=1)
+            "similarity_matrix": px.imshow(similarity_matrix, zmin=0, zmax=1)
         }
 
         # to show how fast we're plateauing
