@@ -128,6 +128,6 @@ def get_dataset_and_loader(config: ConfigObject, verbose=False):
     dataset = DataSetType(config, seed_knots=seed_knots)
 
     batchsize, n_workers = config.batchsize, config.n_workers
-    dataloader = DataLoader(dataset, batch_size=batchsize, num_workers=n_workers, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=batchsize, num_workers=n_workers, shuffle=False)
 
     return dataset, dataloader
