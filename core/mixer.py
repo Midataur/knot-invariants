@@ -256,13 +256,30 @@ def random_relabel_and_reorder(pd_code: list[int], max_crossings: int | None = N
 
     return rejoined
 
+def rr_accepts_kwargs(pd_code: list[int], max_crossings: int | None = None, **kwargs):
+    """
+        Exactly the same as random_relabel_and_reorder but it accepts kwargs without throwing an error.
+    """
+    return random_relabel_and_reorder(pd_code, max_crossings)
+
+def random_symmmetry(pd_code: list[int], symmetry_type: str):
+    """
+        Applies a random valid symmetry to the code.
+    """
+
+    sym_group = SYMMETRY_GROUP[symmetry_type]
+    chosen_sym = random.choice(sym_group)
+    return chosen_sym(pd_code)
+
 def hamiltonian_mixer(
         pd_code: list[int], 
-        n_steps: int, 
+        n_steps: int,
+
+        symmetry_type = "Chiral", # conservative assumption
 
         hamiltonian: Callable[[list[int], MoveData | None], float] = crossing_hamiltonian, 
         temperature_curve: Callable[[int], float] | None = None,
-        end_step: Callable[[list[int]], list[int]] = random_relabel_and_reorder,
+        end_step: Callable[[list[int]], list[int]] = rr_accepts_kwargs,
 
         return_full_history: bool = False,
         strict = False
@@ -337,8 +354,11 @@ def hamiltonian_mixer(
 
     if return_full_history:
         return current_code, history
-    
+
     # perform the end step
-    current_code = end_step(current_code)
+    current_code = end_step(
+        current_code, 
+        symmetry_type=symmetry_type
+    )
 
     return current_code

@@ -289,3 +289,14 @@ def pad_list(list_to_pad: list, desired_length: int, padding_element=0, strict=F
     remaining_length = desired_length - len(list_to_pad)
 
     return list_to_pad + [padding_element for x in range(remaining_length)]
+
+def sort_knots(knots: list[Knot]):
+    """
+        Sorts a list of knots by crossing count,
+        with `knot_id` as a tiebreaker.
+    """
+
+    return sorted(
+        knots,
+        key=lambda x: (len(x.pd_code), x.knot_id) # use knot id for tie breaker
+    )

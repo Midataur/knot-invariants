@@ -1,7 +1,7 @@
 from dataset_processing import get_knots
 from torch.utils.data import Dataset, DataLoader
 from constants_and_types import ConfigObject, Knot
-from utilities import pad_list, unzip
+from utilities import pad_list, unzip, sort_knots
 import pd_transformations
 import urllib.request
 import random
@@ -45,11 +45,6 @@ class KnotDataWithTransforms(Dataset):
             for x in range(2):
                 # mix up the diagram
                 transformed_code = self.mixer_to_use(knot.pd_code)
-                
-                # apply a random valid symmetry
-                sym_group = pd_transformations.SYMMETRY_GROUP[knot.sym_type]
-                chosen_sym = random.choice(sym_group)
-                transformed_code = chosen_sym(transformed_code)
 
                 # save the relabelled code with padding
                 pair.append(pad_list(
@@ -125,6 +120,9 @@ def get_dataset_and_loader(config: ConfigObject, verbose=False, exclude_torus=Tr
             lambda x: "T" not in x.knot_id,
             seed_knots
         ))
+
+    # sort the knots for better interpretability
+    seed_knots = sort_knots(seed_knots)
 
     # create the dataset and loader
     DataSetType = DATASET_TYPES[config.dataset_type]
