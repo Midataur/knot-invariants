@@ -40,25 +40,20 @@ def train(config: ConfigObject):
         temperature=config.simclr_temp
     )
 
-    learning_rate = config.learning_rate
-    weight_decay = config.weight_decay
-    lr_factor = config.lr_factor
-    lr_patience = config.lr_patience
-    threshold = config.threshold
-
     # Define the optimizer and scheduler
     optimizer = config.optimizer(
         model.parameters(), 
-        lr=learning_rate,
-        weight_decay=weight_decay
+        lr=config.learning_rate,
+        weight_decay=config.weight_decay,
+        momentum=config.momentum
     )
 
     scheduler = ReduceLROnPlateau(
         optimizer,
         mode='min',
-        factor=lr_factor,
-        patience=lr_patience,
-        threshold=threshold
+        factor=config.lr_factor,
+        patience=config.lr_patience,
+        threshold=config.threshold
     )
 
     # set up accelerator
