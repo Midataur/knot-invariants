@@ -77,7 +77,7 @@ DATASET_TYPES = {
     "knotdatawithtransforms": KnotDataWithTransforms,
 }
 
-def get_dataset_and_loader(config: ConfigObject, verbose=False):
+def get_dataset_and_loader(config: ConfigObject, verbose=False, exclude_torus=True):
     if verbose:
         print(f"Creating dataset...")
     
@@ -117,6 +117,14 @@ def get_dataset_and_loader(config: ConfigObject, verbose=False):
 
     # filter to only requested
     seed_knots = config.get_train_set(all_knots)
+
+    # remove the torus knots if requested.
+    # we do this because sometimes they're just copies of known knots.
+    if exclude_torus:
+        seed_knots = list(filter(
+            lambda x: "T" not in x.knot_id,
+            seed_knots
+        ))
 
     # create the dataset and loader
     DataSetType = DATASET_TYPES[config.dataset_type]
