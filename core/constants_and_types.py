@@ -1,4 +1,5 @@
 from collections.abc import Callable, Sequence
+from torch.optim import AdamW
 from typing import NamedTuple
 
 CONFIG_FILE_NAME = "config.pickle"
@@ -78,6 +79,7 @@ class ConfigObject(NamedTuple):
  
     # the next few are parameters with default values
 
+    optimizer: any = AdamW    # the optimiser to use.
     n_workers: int = 0        # number of workers to use for loading data to the gpus.
                               # set to 0 for "use all", +ve for a specific count.
                               # usually set to 0.

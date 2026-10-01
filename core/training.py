@@ -47,7 +47,7 @@ def train(config: ConfigObject):
     threshold = config.threshold
 
     # Define the optimizer and scheduler
-    optimizer = optim.AdamW(
+    optimizer = config.optimizer(
         model.parameters(), 
         lr=learning_rate,
         weight_decay=weight_decay
@@ -85,7 +85,6 @@ def train(config: ConfigObject):
     epoch = 0
 
     last_train_loss = None
-    last_val_loss = None
 
     # training loop
     while True:
