@@ -13,11 +13,14 @@ hamiltonian = functools.partial(
     max_crossings = max_crossings
 )
 
+def pdcf_with_kwargs(pd_code, **kwargs):
+    return pd_canonical_form(pd_code)
+
 mixer_to_use = functools.partial(
     mixer.hamiltonian_mixer,
     n_steps=n_mix_steps,
     hamiltonian=hamiltonian,
-    end_step=pd_canonical_form
+    end_step=pdcf_with_kwargs
 )
 
 TRAIN_NO_MORE_THAN = 10
