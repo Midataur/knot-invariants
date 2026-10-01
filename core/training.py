@@ -137,6 +137,7 @@ def train(config: ConfigObject):
 
         metrics = {
             "loss": train_loss,
+            "current_lr": scheduler.get_last_lr(),
             "tensor_shape": first_embedded.shape,
             "orthogonal_loss": orthogonal_loss,
             "all_aligned_loss": all_aligned_loss,
