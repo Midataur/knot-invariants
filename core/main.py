@@ -1,6 +1,6 @@
 from pd_utils import EDGES_PER_NODE, pd_canonical_form
 from constants_and_types import Knot, ConfigObject
-import bitsandbytes
+import torch
 import functools
 import mixer
 
@@ -37,7 +37,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "1-move-no-relabel-LT10-12",
+    model_name      = "1-move-no-relabel-LT10-13",
     model_type      = "BasicTransformer",
     raw_db_filename = "katlas.rdf",
     data_url        = "http://katlas.org/Data/katlas.rdf.gz",
@@ -48,10 +48,10 @@ CONFIG = ConfigObject(
     extra_notes     = f"Only training on knots with at most {TRAIN_NO_MORE_THAN} crossings.",
 
     get_train_set   = get_train_set,
-    n_embed         = 900,
+    n_embed         = 1200,
     n_heads         = 6,
     dropout         = 0,
-    n_blocks        = 4,
+    n_blocks        = 8,
 
     proj_dim        = 900,
 
@@ -59,11 +59,11 @@ CONFIG = ConfigObject(
     n_mix_steps     = n_mix_steps,
     mixer_to_use    = mixer_to_use,
 
-    optimizer       = bitsandbytes.optim.LARS,
-    learning_rate   = 3*(10**-3), 
+    optimizer       = torch.optim.AdamW,
+    learning_rate   = 3*(10**-5), 
     batchsize       = 8192,
     weight_decay    = 0.1, 
-    momentum        = 0.01,
+    momentum        = 0,
     lr_factor       = 0.1, 
     lr_patience     = 10, 
     threshold       = 0.01,
