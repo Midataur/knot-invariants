@@ -62,8 +62,6 @@ def train(config: ConfigObject):
     )
 
     if accelerator.is_local_main_process:
-        print("Training...")
-
         # train the model
         # start a new wandb run to track this script
         wandb.init(
