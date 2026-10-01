@@ -37,7 +37,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "1-move-no-relabel-LT10-8",
+    model_name      = "1-move-no-relabel-LT10-9",
     model_type      = "BasicTransformer",
     raw_db_filename = "katlas.rdf",
     data_url        = "http://katlas.org/Data/katlas.rdf.gz",
@@ -60,7 +60,7 @@ CONFIG = ConfigObject(
     mixer_to_use    = mixer_to_use,
 
     optimizer       = bitsandbytes.optim.LARS,
-    learning_rate   = 3*(10**-6), 
+    learning_rate   = 3*(10**-7), 
     batchsize       = 8192,
     weight_decay    = 0.1, 
     momentum        = 0.01,
