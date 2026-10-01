@@ -51,7 +51,7 @@ CONFIG = ConfigObject(
     n_embed         = 900,
     n_heads         = 6,
     dropout         = 0,
-    n_blocks        = 8,
+    n_blocks        = 4,
 
     proj_dim        = 900,
 
