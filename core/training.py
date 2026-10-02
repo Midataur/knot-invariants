@@ -134,13 +134,16 @@ def train(config: ConfigObject):
             first_embedded, second_embedded
         ).tolist()
 
+        similarity_matrix_top_quadrant = similarity_matrix[:num_rows, :num_rows]
+
         metrics = {
             "loss": train_loss,
             "current_lr": scheduler.get_last_lr()[0],
             "tensor_shape": first_embedded.shape,
             "orthogonal_loss": orthogonal_loss,
             "all_aligned_loss": all_aligned_loss,
-            "similarity_matrix": px.imshow(similarity_matrix, zmin=0, zmax=1)
+            "similarity_matrix": px.imshow(similarity_matrix, zmin=0, zmax=1),
+            "similarity_matrix_top_quadrant": px.imshow(similarity_matrix_top_quadrant, zmin=0, zmax=1)
         }
 
         # to show how fast we're plateauing
