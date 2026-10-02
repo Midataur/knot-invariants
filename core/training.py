@@ -132,8 +132,9 @@ def train(config: ConfigObject):
         # log the similarity matrix
         similarity_matrix = loss_function.calculate_similarities(
             first_embedded, second_embedded
-        ).tolist()
+        )
 
+        # useful for not crashing my browser when i open wandb
         similarity_matrix_top_quadrant = similarity_matrix[:num_rows, :num_rows]
 
         metrics = {
@@ -142,8 +143,10 @@ def train(config: ConfigObject):
             "tensor_shape": first_embedded.shape,
             "orthogonal_loss": orthogonal_loss,
             "all_aligned_loss": all_aligned_loss,
-            "similarity_matrix": px.imshow(similarity_matrix, zmin=0, zmax=1),
-            "similarity_matrix_top_quadrant": px.imshow(similarity_matrix_top_quadrant, zmin=0, zmax=1)
+            "similarity_matrix": px.imshow(similarity_matrix.tolist(), zmin=0, zmax=1),
+            "similarity_matrix_top_quadrant": px.imshow(
+                similarity_matrix_top_quadrant.tolist(), zmin=0, zmax=1
+            )
         }
 
         # to show how fast we're plateauing
