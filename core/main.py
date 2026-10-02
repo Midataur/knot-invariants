@@ -40,40 +40,41 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name      = "1-move-no-RL-no-sym-LT10-2",
-    model_type      = "BasicTransformer",
-    raw_db_filename = "katlas.rdf",
-    data_url        = "http://katlas.org/Data/katlas.rdf.gz",
-    dataset_type    = "knotdatawithtransforms",
-    wandb_project   = "knot-simclr",
-    random_seed     = 42,
+    model_name        = "1-move-no-RL-no-sym-LT10-3",
+    model_type        = "BasicTransformer",
+    raw_db_filename   = "katlas.rdf",
+    data_url          = "http://katlas.org/Data/katlas.rdf.gz",
+    dataset_type      = "knotdatawithtransforms",
+    wandb_project     = "knot-simclr",
+    random_seed       = 42,
 
-    extra_notes     = f"Only training on knots with at most {TRAIN_NO_MORE_THAN} crossings.",
+    extra_notes       = f"Only training on knots with at most {TRAIN_NO_MORE_THAN} crossings.",
 
-    get_train_set   = get_train_set,
-    n_embed         = 900,
-    n_heads         = 6,
-    dropout         = 0,
-    n_blocks        = 4,
+    get_train_set     = get_train_set,
+    n_embed           = 900,
+    n_heads           = 6,
+    dropout           = 0,
+    n_blocks          = 4,
 
-    proj_dim        = 900,
+    proj_dim          = 900,
 
-    max_crossings   = max_crossings,
-    n_mix_steps     = n_mix_steps,
-    mixer_to_use    = mixer_to_use,
+    max_crossings     = max_crossings,
+    n_mix_steps       = n_mix_steps,
+    mixer_to_use      = mixer_to_use,
 
-    optimizer       = torch.optim.AdamW,
-    learning_rate   = 3*(10**-5), 
-    batchsize       = 8192,
-    weight_decay    = 0.1, 
-    momentum        = 0,
-    lr_factor       = 0.1, 
-    lr_patience     = 30,
-    threshold       = 0.01,
-    simclr_temp     = 0.05,
-    n_workers       = 0,
-
-    PATH            = "."
+    optimizer         = torch.optim.AdamW,
+    learning_rate     = 3*(10**-5), 
+    logging_frequency = 10,
+    batchsize         = 8192,
+    weight_decay      = 0.1, 
+    momentum          = 0,
+    lr_factor         = 0.1, 
+    lr_patience       = 30,
+    threshold         = 0.01,
+    simclr_temp       = 0.05,
+    n_workers         = 0,
+  
+    PATH              = "."
 )
 
 # sanity check

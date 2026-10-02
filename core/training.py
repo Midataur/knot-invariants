@@ -147,7 +147,7 @@ def train(config: ConfigObject):
 
 
         # useful for not crashing my browser when i open wandb
-        if epoch % 10 == 0:
+        if epoch % config.logging_frequency == 0:
             similarity_matrix_top_quadrant = similarity_matrix[:num_rows, :num_rows]
             metrics["similarity_matrix_top_quadrant"] = px.imshow(
                 similarity_matrix_top_quadrant.tolist(), zmin=0, zmax=1
