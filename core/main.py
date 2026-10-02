@@ -40,7 +40,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name        = "1-move-no-RL-no-sym-LT10-3",
+    model_name        = "1-move-no-RL-no-sym-LT11-5",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",
@@ -64,7 +64,7 @@ CONFIG = ConfigObject(
 
     optimizer         = torch.optim.AdamW,
     learning_rate     = 3*(10**-5), 
-    logging_frequency = 10,
+    logging_frequency = 30,
     batchsize         = 8192,
     weight_decay      = 0.1, 
     momentum          = 0,
