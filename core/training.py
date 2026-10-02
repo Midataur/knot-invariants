@@ -6,7 +6,6 @@ from torch_datasets import get_dataset_and_loader
 from accelerate import Accelerator
 from tqdm.auto import tqdm
 import plotly.express as px
-import torch.optim as optim
 import math
 import torch
 import random
@@ -137,7 +136,7 @@ def train(config: ConfigObject):
 
         metrics = {
             "loss": train_loss,
-            "current_lr": scheduler.get_last_lr().item(),
+            "current_lr": scheduler.get_last_lr()[0],
             "tensor_shape": first_embedded.shape,
             "orthogonal_loss": orthogonal_loss,
             "all_aligned_loss": all_aligned_loss,
