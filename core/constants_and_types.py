@@ -68,10 +68,9 @@ class ConfigObject(NamedTuple):
     lr_factor: float          # the factor by which to reduce lr on plateau. usually 0.1.
     lr_patience: int          # how long to wait before declaring plateau. usually 10.
     threshold: float          # the threshold what counts as a plataeu. usually 0.01.
-    logging_frequency: int    # how frequently to log the (expensive) similarity matrix
+    logging_frequency: int    # how frequently to log expensive operations, such as the similarity matrix.
 
     simclr_temp: float        # the temperature used in the simclr loss function.
-                              # i believe this should usually be set to 1.
 
     # the next few are mixer parameters
 

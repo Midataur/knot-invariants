@@ -74,6 +74,9 @@ def train(config: ConfigObject):
             id=config.model_name
         )
 
+    # log model gradients
+    wandb.watch(model, loss_function, log_freq=config.logging_frequency)
+
     epoch = 0
 
     last_train_loss = None
@@ -134,8 +137,6 @@ def train(config: ConfigObject):
             first_embedded, second_embedded
         )
 
-        
-
         metrics = {
             "loss": train_loss,
             "current_lr": scheduler.get_last_lr()[0],
@@ -144,7 +145,6 @@ def train(config: ConfigObject):
             "all_aligned_loss": all_aligned_loss,
             #"similarity_matrix": px.imshow(similarity_matrix.tolist(), zmin=0, zmax=1),
         }
-
 
         # useful for not crashing my browser when i open wandb
         if epoch % config.logging_frequency == 0:
