@@ -23,7 +23,7 @@ mixer_to_use = functools.partial(
     end_step=pdcf_with_kwargs
 )
 
-TRAIN_NO_MORE_THAN = 11
+TRAIN_NO_MORE_THAN = 10
 
 # set up the train set decider
 def get_train_set(knots: list[Knot]):
@@ -40,7 +40,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name        = "1-move-no-RL-no-sym-LT10-5",
+    model_name        = "1-move-no-RL-no-sym-LT10-6",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",
