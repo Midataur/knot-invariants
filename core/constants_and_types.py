@@ -63,7 +63,6 @@ class ConfigObject(NamedTuple):
 
     optimizer: any            # the optimiser to use. expects a partial function.
     scheduler: any            # the scheduler to use. expects a partial function.
-    learning_rate: float      # good starting value: 3*10^-4.
     batchsize: int            # common bottleneck for training speed. good starting value: 64. 
     logging_frequency: int    # how frequently to log expensive operations, such as the similarity matrix.
 
