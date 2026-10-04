@@ -26,7 +26,7 @@ def save_state_and_config(config: ConfigObject, accelerator: Accelerator):
     save_directory = get_save_dir(path, model_name)
 
     # save the model
-    accelerator.state_state(output_dir=save_directory)
+    accelerator.save_state(output_dir=save_directory)
 
     # save the config
     with open(f"{save_directory}/{CONFIG_FILE_NAME}", "wb") as file:
