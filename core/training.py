@@ -1,12 +1,10 @@
-from utilities import try_loading_model, save_model_and_config, SimCLRLoss
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torch.nn.parallel import DistributedDataParallel
-from constants_and_types import ConfigObject
+from utilities import try_loading_state, save_state_and_config, try_loading_config, SimCLRLoss
 from torch_datasets import get_dataset_and_loader
+from constants_and_types import ConfigObject, TrainingState
 from accelerate import Accelerator
 from tqdm.auto import tqdm
 import plotly.express as px
-import math
+import model_types
 import torch
 import random
 import wandb
@@ -30,7 +28,10 @@ def train(config: ConfigObject):
     random.seed(config.random_seed)
 
     # try loading model and config
-    model, config = try_loading_model(config)
+    config = try_loading_config(config)
+
+    ModelType = model_types.MODELS[config.model_type]
+    model = ModelType(config)
 
     dataset, dataloader = get_dataset_and_loader(config, verbose=accelerator.is_local_main_process)
 
@@ -52,6 +53,9 @@ def train(config: ConfigObject):
     model, optimizer, dataloader, scheduler, loss_function = accelerator.prepare(
         model, optimizer, dataloader, scheduler, loss_function
     )
+
+    # try loading the state
+    try_loading_state(config, accelerator)
 
     if accelerator.is_local_main_process:
         # train the model
@@ -114,46 +118,56 @@ def train(config: ConfigObject):
             total_loss += loss.item()
             num_batches += 1
 
-        # find what the loss would be if we had perfect orthogonality
-        orthogonal_loss = -math.log(
-            math.exp(1/config.simclr_temp)/(
-                math.exp(1/config.simclr_temp) + 2*(num_rows-1)
-            )
-        )
-
-        # find what the loss would be if everything was the same vector
-        all_aligned_loss = -math.log(
-            math.exp(1/config.simclr_temp)/(
-                math.exp(1/config.simclr_temp)*(2*num_rows-1)
-            )
-        )
-
         train_loss = total_loss / num_batches
-
-        # log the similarity matrix
-        similarity_matrix = loss_function.calculate_similarities(
-            first_embedded, second_embedded
-        )
 
         metrics = {
             "loss": train_loss,
             "current_lr": scheduler.get_last_lr()[0],
             "tensor_shape": first_embedded.shape,
-            "orthogonal_loss": orthogonal_loss,
-            "all_aligned_loss": all_aligned_loss,
+            "orthogonal_loss": config.orthogonal_loss(num_rows),
+            "constant_fn_loss": config.constant_fn_loss(num_rows),
+
+            # too expensive :(
             #"similarity_matrix": px.imshow(similarity_matrix.tolist(), zmin=0, zmax=1),
         }
 
-        # useful for not crashing my browser when i open wandb
         if epoch % config.logging_frequency == 0:
+            # log the output similarity matrix
+            similarity_matrix = loss_function.calculate_similarities(
+                first_embedded, second_embedded
+            )
+
+            # look only at upper quadrant for space efficiency
             similarity_matrix_top_quadrant = similarity_matrix[:num_rows, :num_rows]
             metrics["similarity_matrix_top_quadrant"] = px.imshow(
                 similarity_matrix_top_quadrant.tolist(), zmin=0, zmax=1
             )
 
+            # save embedding pictures so we can make gifs later
+
+            # token embeddings
+            tok_emb = model.token_embedding_table.weight.cpu().detach().numpy()
+            tok_emb_similarity = loss_function.calculate_similarities(tok_emb, tok_emb)
+            metrics["tok_emb_similarity"] = px.imshow(
+                tok_emb_similarity.tolist(), zmin=-1, zmax=1
+            )
+
+            # position embeddings
+            pos_emb = model.position_embedding.weight.cpu().detach().numpy()
+            pos_emb_similarity = loss_function.calculate_similarities(pos_emb, pos_emb)
+            metrics["pos_emb_similarity"] = px.imshow(
+                pos_emb_similarity.tolist(), zmin=-1, zmax=1
+            )
+
         # to show how fast we're plateauing
         if epoch > 1:
             metrics["delta_train_loss"] = train_loss - last_train_loss
+
+        # update the curren training state
+        dataloader.dataset.set_training_state(TrainingState(
+            epoch=epoch+1,
+            current_loss=train_loss
+        ))
         
         last_train_loss = train_loss
 
@@ -167,16 +181,7 @@ def train(config: ConfigObject):
             
         # always save the model
         accelerator.wait_for_everyone()
-        save_model_and_config(model, config, accelerator)
-        
-        # save embedding pictures so we can make gifs later
-        # this is broken since we added accelerate
-        # TODO: FIX this later
-        # UPDATE: three projects later, this code is still here and broken
-        # maybe one day :')
-
-        # if accelerator.is_local_main_process:
-        #     save_embedding_pictures(model)
+        save_state_and_config(model, config, accelerator)
 
         # learning rate scheduling
         scheduler.step(train_loss)

@@ -102,6 +102,7 @@ class Block(nn.Module):
     
 class BasicTransformer(nn.Module):
     """A bog standard transfomer."""
+    
     def __init__(self, config: ConfigObject):
         super().__init__()
 

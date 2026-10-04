@@ -1,6 +1,6 @@
 from collections.abc import Callable, Sequence
-from torch.optim import AdamW
 from typing import NamedTuple
+import math
 
 CONFIG_FILE_NAME = "config.pickle"
 MODEL_FILE_NAME = "model.safetensors"
@@ -30,6 +30,15 @@ class Knot(NamedTuple):
     knot_id: str
     pd_code: list[int]
     sym_type: str
+
+class TrainingState(NamedTuple):
+    """
+        An object to store the current training state in
+        that can be passed to various functions.
+    """
+
+    epoch: int
+    current_loss: float
 
 def identity(knots: list[Knot]):
     return knots
@@ -112,11 +121,6 @@ class ConfigObject(NamedTuple):
 
         return safe_dict
 
-    def get_max_input_size(self):
-        """
-            
-        """
-
     def get_transformer_details(self):
         """
             Returns `(maximum input size required, vocabulary size required)`
@@ -140,3 +144,25 @@ class ConfigObject(NamedTuple):
 
         # this will always be the last token in the (zero-indexed) dictionary
         return vocab_size-1
+    
+    def orthogonal_loss(self, num_knots: int):
+        """
+            Returns what the loss would be if we had perfect orthogonality.
+        """
+
+        return -math.log(
+            math.exp(1/self.simclr_temp)/(
+                math.exp(1/self.simclr_temp) + 2*(num_knots-1)
+            )
+        )
+    
+    def constant_fn_loss(self, num_knots: int):
+        """
+            Returns what the loss would be if we had learned a constant function.
+        """
+
+        return -math.log(
+            math.exp(1/self.simclr_temp)/(
+                math.exp(1/self.simclr_temp)*(2*num_knots-1)
+            )
+        )

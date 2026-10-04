@@ -1,25 +1,15 @@
 from dataset_processing import get_knots
 from torch.utils.data import Dataset, DataLoader
-from constants_and_types import ConfigObject, Knot
+from constants_and_types import ConfigObject, Knot, TrainingState
 from utilities import pad_list, unzip, sort_knots
-from typing import NamedTuple
 import urllib.request
 import torch
 import shutil
 import gzip
 import os
 
-class TrainingState(NamedTuple):
-    """
-        An object to store the current training state in
-        that can be passed to various functions.
-    """
-
-    epoch: int
-    current_loss: float
-
 class KnotDataWithTransforms(Dataset):
-    def __init__(self, config: ConfigObject, seed_knots: list[Knot]):
+    def __init__(self, config: ConfigObject, seed_knots: list[Knot], training_state: TrainingState):
         # save the data
         self.max_crossings = config.max_crossings
         self.seed_knots = seed_knots
@@ -31,7 +21,8 @@ class KnotDataWithTransforms(Dataset):
         # save the mixer
         self.mixer_to_use = config.mixer_to_use
 
-        # can be used by various
+        # can be used by various other functions
+        self.training_state = training_state
 
     def __len__(self):
         return len(self.seed_knots)
@@ -51,9 +42,13 @@ class KnotDataWithTransforms(Dataset):
         for knot in relevant_knots:
             pair = []
 
-            for x in range(2):
+            for _ in range(2):
                 # mix up the diagram
-                transformed_code = self.mixer_to_use(knot.pd_code)
+                transformed_code = self.mixer_to_use(
+                    knot.pd_code,
+                    symmetry_type=knot.sym_type,
+                    training_state=self.training_state
+                )
 
                 # save the relabelled code with padding
                 pair.append(pad_list(
@@ -75,6 +70,13 @@ class KnotDataWithTransforms(Dataset):
     
     def save(self, location):
         torch.save(self, location)
+
+    def set_training_state(self, training_state: TrainingState):
+        """
+            Sets a new training state.
+        """
+
+        self.training_state = training_state
     
 # changing the keys here can break backwards compatibility, so be careful
 DATASET_TYPES = {
@@ -136,9 +138,23 @@ def get_dataset_and_loader(config: ConfigObject, verbose=False, exclude_torus=Tr
     # create the dataset and loader
     DataSetType = DATASET_TYPES[config.dataset_type]
 
-    dataset = DataSetType(config, seed_knots=seed_knots)
+    dataset = DataSetType(
+        config, 
+        seed_knots=seed_knots,
+        training_state=TrainingState(
+            epoch=1,
+            current_loss=config.constant_fn_loss(
+                len(seed_knots)
+            ) # defaults to the loss in a bad scenario
+        )
+    )
 
     batchsize, n_workers = config.batchsize, config.n_workers
-    dataloader = DataLoader(dataset, batch_size=batchsize, num_workers=n_workers, shuffle=False)
+    dataloader = DataLoader(
+        dataset, 
+        batch_size=batchsize,
+        num_workers=n_workers, 
+        shuffle=False,
+    )
 
     return dataset, dataloader

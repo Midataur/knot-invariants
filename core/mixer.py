@@ -1,7 +1,7 @@
 from pd_utils import *
 from pd_transformations import *
 from constants_and_types import *
-from typing import NamedTuple
+from typing import NamedTuple, Literal
 from collections.abc import Callable
 import random
 import functools
@@ -362,3 +362,45 @@ def hamiltonian_mixer(
     )
 
     return current_code
+
+def curriculum_augmenter(
+    pd_code: list[int], 
+    symmetry_type,
+    training_state: TrainingState,
+    decide_augmentation_counts: Callable[
+        [TrainingState], tuple[int, int, Literal[0,1], int]
+    ],
+
+    hamiltonian: Callable[[list[int], MoveData | None], float] = crossing_hamiltonian,
+    temperature_curve: Callable[[int], float] | None = None,
+    end_step: Callable[[list[int]], list[int]] = rr_accepts_kwargs,
+
+    strict = False
+):
+    """
+        Takes in a `pd_code`, a `symmetry_type`, a `training_state`,
+        and a function for determining the number of augmentations
+        of each type to perform.
+
+        `decide_augmentation_counts` should be a (potentially non-deterministic)
+        function that takes in a :class:`TrainingState` object and returns
+        a tuple that is four integers long. The tuple is interpreted as:
+        ```
+            (
+                Number of label swaps to perform (general transpositions),
+                Number of node swaps to perform (general transpositions),
+                Number of symmetry moves to perform (should be 0 or 1),
+                Number of Reidemeister moves to perform (using hamiltonian_mixer)
+            )
+        ```
+        The augmentations are then applied to the code in the quantities given by the tuple,
+        in the order they occur in the tuple. The final result is returned, and the `end_step`
+        is performed (if requested).
+
+        If `strict` is set to `True` then the code will be checked at the end to make sure
+        it's still a valid pd code. This is expensive, so it is recommended to only enable this
+        for debugging purposes.
+    """
+
+    # TODO: implement this properly
+    raise NotImplementedError()
