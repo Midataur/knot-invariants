@@ -181,7 +181,7 @@ def train(config: ConfigObject):
             
         # always save the model
         accelerator.wait_for_everyone()
-        save_state_and_config(model, config, accelerator)
+        save_state_and_config(config, accelerator)
 
         # learning rate scheduling
         scheduler.step(train_loss)
