@@ -2,14 +2,21 @@ from dataset_processing import get_knots
 from torch.utils.data import Dataset, DataLoader
 from constants_and_types import ConfigObject, Knot
 from utilities import pad_list, unzip, sort_knots
-import pd_transformations
+from typing import NamedTuple
 import urllib.request
-import random
 import torch
 import shutil
-import mixer
 import gzip
 import os
+
+class TrainingState(NamedTuple):
+    """
+        An object to store the current training state in
+        that can be passed to various functions.
+    """
+
+    epoch: int
+    current_loss: float
 
 class KnotDataWithTransforms(Dataset):
     def __init__(self, config: ConfigObject, seed_knots: list[Knot]):
@@ -23,6 +30,8 @@ class KnotDataWithTransforms(Dataset):
 
         # save the mixer
         self.mixer_to_use = config.mixer_to_use
+
+        # can be used by various
 
     def __len__(self):
         return len(self.seed_knots)

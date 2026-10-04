@@ -41,18 +41,11 @@ def train(config: ConfigObject):
 
     # Define the optimizer and scheduler
     optimizer = config.optimizer(
-        model.parameters(), 
-        lr=config.learning_rate,
-        weight_decay=config.weight_decay,
-        #momentum=config.momentum
+        model.parameters()
     )
 
-    scheduler = ReduceLROnPlateau(
+    scheduler = config.scheduler(
         optimizer,
-        mode='min',
-        factor=config.lr_factor,
-        patience=config.lr_patience,
-        threshold=config.threshold
     )
 
     # set up accelerator
@@ -75,7 +68,12 @@ def train(config: ConfigObject):
         )
 
     # log model gradients
-    wandb.watch(model, loss_function, log_freq=config.logging_frequency)
+    wandb.watch(
+        model, 
+        loss_function, 
+        log_freq=config.logging_frequency, 
+        log="all"
+    )
 
     epoch = 0
 

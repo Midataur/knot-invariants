@@ -61,13 +61,10 @@ class ConfigObject(NamedTuple):
 
     # the next few are training parameters
 
+    optimizer: any            # the optimiser to use. expects a partial function.
+    scheduler: any            # the scheduler to use. expects a partial function.
     learning_rate: float      # good starting value: 3*10^-4.
     batchsize: int            # common bottleneck for training speed. good starting value: 64. 
-    weight_decay: float       # good starting value: 0.1.
-    momentum: float           # the momentum value to use for the optimiser
-    lr_factor: float          # the factor by which to reduce lr on plateau. usually 0.1.
-    lr_patience: int          # how long to wait before declaring plateau. usually 10.
-    threshold: float          # the threshold what counts as a plataeu. usually 0.01.
     logging_frequency: int    # how frequently to log expensive operations, such as the similarity matrix.
 
     simclr_temp: float        # the temperature used in the simclr loss function.
@@ -80,7 +77,6 @@ class ConfigObject(NamedTuple):
  
     # the next few are parameters with default values
 
-    optimizer: any = AdamW    # the optimiser to use.
     n_workers: int = 0        # number of workers to use for loading data to the gpus.
                               # set to 0 for "use all", +ve for a specific count.
                               # usually set to 0.
