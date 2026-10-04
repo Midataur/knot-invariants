@@ -23,12 +23,12 @@ mixer_to_use = functools.partial(
     end_step=pdcf_with_kwargs
 )
 
-TRAIN_NO_MORE_THAN = 10
+TRAIN_NO_MORE_THAN = 11
 
 # set up the train set decider
 def get_train_set(knots: list[Knot]):
     """
-        Enfore a maximum crossing count on seeds knots in the training set.
+        Enforce a maximum crossing count on seeds knots in the training set.
     """
 
     return list(filter(
@@ -40,7 +40,7 @@ def get_train_set(knots: list[Knot]):
 # documentation of parameter meanings can be found
 # in the custom_types file.
 CONFIG = ConfigObject(
-    model_name        = "1-move-no-RL-no-sym-LT10-7",
+    model_name        = "1-move-no-RL-no-sym-LT11-8",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",
@@ -51,12 +51,12 @@ CONFIG = ConfigObject(
     extra_notes       = f"Only training on knots with at most {TRAIN_NO_MORE_THAN} crossings.",
 
     get_train_set     = get_train_set,
-    n_embed           = 400,
+    n_embed           = 900,
     n_heads           = 20,
     dropout           = 0,
-    n_blocks          = 4,
+    n_blocks          = 8,
 
-    proj_dim          = 400,
+    proj_dim          = 900,
 
     max_crossings     = max_crossings,
     n_mix_steps       = n_mix_steps,
@@ -65,11 +65,11 @@ CONFIG = ConfigObject(
     optimizer         = torch.optim.AdamW,
     learning_rate     = 3*(10**-5), 
     logging_frequency = 30,
-    batchsize         = 8192,
-    weight_decay      = 0.1, 
+    batchsize         = 550,
+    weight_decay      = 0.01, 
     momentum          = 0,
     lr_factor         = 0.1, 
-    lr_patience       = 50,
+    lr_patience       = 100,
     threshold         = 0.01,
     simclr_temp       = 0.05,
     n_workers         = 0,
