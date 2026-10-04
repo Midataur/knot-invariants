@@ -146,14 +146,14 @@ def train(config: ConfigObject):
             # save embedding pictures so we can make gifs later
 
             # token embeddings
-            tok_emb = model.token_embedding_table.weight.cpu().detach().numpy()
+            tok_emb = model.token_embedding_table.weight.cpu().detach()
             tok_emb_similarity = loss_function.calculate_similarities(tok_emb, tok_emb)
             metrics["tok_emb_similarity"] = px.imshow(
                 tok_emb_similarity.tolist(), zmin=-1, zmax=1
             )
 
             # position embeddings
-            pos_emb = model.position_embedding.weight.cpu().detach().numpy()
+            pos_emb = model.position_embedding.weight.cpu().detach()
             pos_emb_similarity = loss_function.calculate_similarities(pos_emb, pos_emb)
             metrics["pos_emb_similarity"] = px.imshow(
                 pos_emb_similarity.tolist(), zmin=-1, zmax=1
