@@ -86,7 +86,7 @@ class ConfigObject(NamedTuple):
                               # for the training set. For example, it might
                               # return all knots that had a crossing count
                               # less than 15.
-     
+    
     PATH: str = ".."          # the folder path to work in. 
                               # should be ".." unless you're doing something weird.
 

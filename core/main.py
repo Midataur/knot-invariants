@@ -38,7 +38,7 @@ def get_train_set(knots: list[Knot]):
 
 optimiser = functools.partial(
     torch.optim.AdamW,
-    learning_rate=3*(10**-5), 
+    lr=3*(10**-5), # learning rate
     weight_decay=0.01
 )
 
