@@ -282,7 +282,8 @@ def hamiltonian_mixer(
         end_step: Callable[[list[int]], list[int]] = rr_accepts_kwargs,
 
         return_full_history: bool = False,
-        strict = False
+        strict = False,
+        **kwargs
     ):
     """
         Takes a planar diagram code and applies `n_steps` random Reidemeister moves to it.
