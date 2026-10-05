@@ -44,7 +44,8 @@ optimiser = functools.partial(
 
 scheduler = functools.partial(
     torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
-    T_0=150 # time between restarts
+    T_0=1000, # time between restarts
+    T_mult=0.9
 )
 
 # the actual config object i'm using for this run.
@@ -52,7 +53,7 @@ scheduler = functools.partial(
 # in the custom_types file.
 
 CONFIG = ConfigObject(
-    model_name        = "1-move-no-RL-no-sym-LT10-11",
+    model_name        = "1-move-no-RL-no-sym-LT10-12",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",
