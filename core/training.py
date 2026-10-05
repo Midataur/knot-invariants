@@ -79,13 +79,12 @@ def train(config: ConfigObject):
         log="all"
     )
 
-    epoch = 0
-
-    last_train_loss = None
+    last_train_loss = dataloader.dataset.training_state.current_loss
 
     # training loop
     while True:
-        epoch += 1
+        epoch = dataloader.dataset.training_state.epoch
+
         model.train()  # Set the model to training mode
 
         total_loss = 0.0
@@ -149,21 +148,21 @@ def train(config: ConfigObject):
             tok_emb = model.token_embedding_table.weight.cpu().detach()
             tok_emb_similarity = loss_function.calculate_similarities(tok_emb, tok_emb)
             metrics["tok_emb_similarity"] = px.imshow(
-                tok_emb_similarity.tolist(), zmin=-1, zmax=1
+                tok_emb_similarity[:tok_emb.shape[0], :tok_emb.shape[0]].tolist(), zmin=-1, zmax=1
             )
 
             # position embeddings
             pos_emb = model.position_embedding.weight.cpu().detach()
             pos_emb_similarity = loss_function.calculate_similarities(pos_emb, pos_emb)
             metrics["pos_emb_similarity"] = px.imshow(
-                pos_emb_similarity.tolist(), zmin=-1, zmax=1
+                pos_emb_similarity[:pos_emb.shape[0], :pos_emb.shape[0]].tolist(), zmin=-1, zmax=1
             )
 
         # to show how fast we're plateauing
         if epoch > 1:
             metrics["delta_train_loss"] = train_loss - last_train_loss
 
-        # update the curren training state
+        # update the current training state
         dataloader.dataset.set_training_state(TrainingState(
             epoch=epoch+1,
             current_loss=train_loss
@@ -173,7 +172,7 @@ def train(config: ConfigObject):
 
         if accelerator.is_local_main_process:
             accelerator.print(
-                f"Epoch {epoch + 1}, Loss {train_loss}"
+                f"Epoch {epoch}, Loss {train_loss}"
             )
 
             # log metrics to wandb
@@ -184,4 +183,4 @@ def train(config: ConfigObject):
         save_state_and_config(config, accelerator)
 
         # learning rate scheduling
-        scheduler.step(train_loss)
+        scheduler.step(epoch=epoch)
