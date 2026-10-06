@@ -112,33 +112,23 @@ class SimCLRLoss(torch.nn.Module):
             Assumes that `first` and `second` are tensors of shape `(B,E)`, where
             `B` is the batch-size and `E` is the final embedding dimension.
         """
+        # compute the logits (the arguments for the exponentials)
         similarities = self.calculate_similarities(first, second)
+        logits = similarities/self.temperature # (2B, 2B)
 
-        # scale the similarities by the temperature
-        similarities = similarities/self.temperature # (2B, 2B) 
+        # set the diagonal to -infty.
+        # this has the same effect as the the denominator
+        # indicator function in the original paper.
+        logits -= torch.zeros(logits.shape).fill_diagonal_(float("inf"))
 
-        # compute the l_{i,j} matrix from the paper
-        exponentiated = torch.exp(similarities) # (2B, 2B)
-        
-        mask = (
-                torch.ones(exponentiated.shape, device=first.device) 
-                - torch.eye(exponentiated.shape[0], device=first.device)
-        ) # (2B, 2B)
+        # create a tensor describing where the other thing in the pair is.
+        # this acts as the "class label" for cross entropy loss.
+        num_rows = first.shape[0]
+        index = torch.arange(num_rows)
+        targets = torch.cat((index+num_rows, index))
 
-        denominator = exponentiated @ mask # (2B, 2B)
-
-        l_ij = -torch.log(torch.div(exponentiated, denominator))
-
-        # compute the total loss (sum across positive pairs)
-        B = first.shape[0]
-        upper_diag_mask = (
-            torch.diagflat(torch.ones(B, device=first.device), offset=B)
-            +torch.diagflat(torch.ones(B, device=first.device), offset=-B)
-        ) # (2B, 2B)
-
-        loss = (l_ij*upper_diag_mask).sum()/(2*B)
-
-        return loss
+        # compute the cross entropy loss
+        return torch.nn.functional.cross_entropy(logits, targets)        
 
 ### NON-ML ###
 
