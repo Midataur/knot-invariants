@@ -73,7 +73,7 @@ CONFIG = ConfigObject(
     n_mix_steps       = n_mix_steps,
     mixer_to_use      = mixer_to_use,
 
-    simclr_temp       = 0.05,
+    simclr_temp       = 0.07,
     optimizer         = optimiser,
     scheduler         = scheduler,
     logging_frequency = 100,
