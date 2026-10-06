@@ -119,7 +119,7 @@ class SimCLRLoss(torch.nn.Module):
         # set the diagonal to -infty.
         # this has the same effect as the the denominator
         # indicator function in the original paper.
-        logits -= torch.zeros(logits.shape).fill_diagonal_(float("inf"))
+        logits -= torch.zeros(logits.shape, device=logits.device).fill_diagonal_(float("inf"))
 
         # create a tensor describing where the other thing in the pair is.
         # this acts as the "class label" for cross entropy loss.
