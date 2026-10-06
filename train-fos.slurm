@@ -10,7 +10,7 @@
 #SBATCH --nodes=1
 
 # The name of the job:
-#SBATCH --job-name="sts-training"
+#SBATCH --job-name="knot-theory"
 
 # The project ID which this job should run under:
 #SBATCH --account="punim2163"

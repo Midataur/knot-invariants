@@ -124,7 +124,7 @@ class SimCLRLoss(torch.nn.Module):
         # create a tensor describing where the other thing in the pair is.
         # this acts as the "class label" for cross entropy loss.
         num_rows = first.shape[0]
-        index = torch.arange(num_rows)
+        index = torch.arange(num_rows, device=logits.device)
         targets = torch.cat((index+num_rows, index))
 
         # compute the cross entropy loss
