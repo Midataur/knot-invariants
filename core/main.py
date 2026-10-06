@@ -39,8 +39,7 @@ def get_train_set(knots: list[Knot]):
 optimiser = functools.partial(
     torch.optim.AdamW,
     lr=3*(10**-5), # learning rate
-    weight_decay=0.01,
-    eps=10**-5 # testing this out to reduce nois
+    weight_decay=0.01
 )
 
 scheduler = functools.partial(
@@ -52,7 +51,7 @@ scheduler = functools.partial(
 # in the custom_types file.
 
 CONFIG = ConfigObject(
-    model_name        = "2-move-no-RL-no-sym-LT10-1",
+    model_name        = "2-move-no-RL-no-sym-LT10-2",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",
@@ -74,7 +73,7 @@ CONFIG = ConfigObject(
     n_mix_steps       = n_mix_steps,
     mixer_to_use      = mixer_to_use,
 
-    simclr_temp       = 0.1,
+    simclr_temp       = 0.05,
     optimizer         = optimiser,
     scheduler         = scheduler,
     logging_frequency = 100,
