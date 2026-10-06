@@ -5,8 +5,8 @@ import functools
 import mixer
 
 # set up the mixer
-max_crossings = 13
-n_mix_steps = 1
+max_crossings = 14
+n_mix_steps = 2
 
 hamiltonian = functools.partial(
     mixer.crossing_hamiltonian_with_cutoff,
@@ -52,7 +52,7 @@ scheduler = functools.partial(
 # in the custom_types file.
 
 CONFIG = ConfigObject(
-    model_name        = "1-move-no-RL-no-sym-LT10-13",
+    model_name        = "2-move-no-RL-no-sym-LT10-1",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",

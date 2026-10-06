@@ -142,6 +142,12 @@ def train(config: ConfigObject):
                 similarity_matrix_top_quadrant.tolist(), zmin=0, zmax=1
             )
 
+            # rounding tells us "are these more same or more different?"
+            similarity_matrix_top_quadrant = similarity_matrix[:num_rows, :num_rows]
+            metrics["similarity_matrix_top_quadrant_rounded"] = px.imshow(
+                similarity_matrix_top_quadrant.round().tolist(), zmin=0, zmax=1
+            )
+
             # save embedding pictures so we can make gifs later
 
             # token embeddings
