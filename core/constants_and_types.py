@@ -89,6 +89,10 @@ class ConfigObject(NamedTuple):
                               # set to 0 for "use all", +ve for a specific count.
                               # usually set to 0.
 
+    max_epochs: int | None = None
+                              # the maximum number of epochs to train for.
+                              # if this is set to None then we train forever.
+
     get_train_set: Callable[[list[Knot]], list[Knot]] = identity
                               # a function that takes in a list of knots and
                               # returns a sub-list of knots that will be used

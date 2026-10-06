@@ -184,3 +184,7 @@ def train(config: ConfigObject):
 
         # learning rate scheduling
         scheduler.step(epoch=epoch)
+
+        # potentially quit if we need to
+        if config.max_epochs is not None and epoch > config.max_epochs:
+            break

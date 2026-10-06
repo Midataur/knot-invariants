@@ -44,8 +44,7 @@ optimiser = functools.partial(
 
 scheduler = functools.partial(
     torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
-    T_0=1000, # time between restarts
-    T_mult=0.9
+    T_0=7000, # time between restarts
 )
 
 # the actual config object i'm using for this run.
@@ -80,7 +79,8 @@ CONFIG = ConfigObject(
     scheduler         = scheduler,
     logging_frequency = 100,
     batchsize         = 600,
-    
+
+    max_epochs        = 7000,
     n_workers         = 0,
     PATH              = "."
 )
