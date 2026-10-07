@@ -7,7 +7,7 @@ import mixer
 # set up the mixer
 TRAIN_NO_MORE_THAN = 10 # the maximum number of crossings in the og diagram
 
-n_mix_steps = 3
+n_mix_steps = 4
 max_crossings = TRAIN_NO_MORE_THAN + n_mix_steps*2
 
 hamiltonian = functools.partial(
@@ -51,7 +51,7 @@ scheduler = functools.partial(
 # in the custom_types file.
 
 CONFIG = ConfigObject(
-    model_name        = "3-move-no-RL-no-sym-LT10-1",
+    model_name        = "4-move-no-RL-no-sym-LT10-1",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",

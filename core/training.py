@@ -119,33 +119,37 @@ def train(config: ConfigObject):
 
         train_loss = total_loss / num_batches
 
+        # calculate number of false negatives
+        similarity_matrix = loss_function.calculate_similarities(
+            first_embedded, second_embedded
+        )
+
+        similarity_matrix_top_quadrant = similarity_matrix[:num_rows, :num_rows]
+        top_quad_rounded = similarity_matrix_top_quadrant.round()
+
+        # we subtract of identities and divide by two.
+        # this gives the number of non-zero entries above the diagonal.
+        collision_count = (top_quad_rounded.sum() - num_rows)/2
+
         metrics = {
             "loss": train_loss,
             "current_lr": scheduler.get_last_lr()[0],
             "tensor_shape": first_embedded.shape,
             "orthogonal_loss": config.orthogonal_loss(num_rows),
             "constant_fn_loss": config.constant_fn_loss(num_rows),
-
-            # too expensive :(
-            #"similarity_matrix": px.imshow(similarity_matrix.tolist(), zmin=0, zmax=1),
+            "collision_count": collision_count
         }
 
         if epoch % config.logging_frequency == 0:
-            # log the output similarity matrix
-            similarity_matrix = loss_function.calculate_similarities(
-                first_embedded, second_embedded
-            )
-
-            # look only at upper quadrant for space efficiency
-            similarity_matrix_top_quadrant = similarity_matrix[:num_rows, :num_rows]
+            # log the top quadrant
             metrics["similarity_matrix_top_quadrant"] = px.imshow(
                 similarity_matrix_top_quadrant.tolist(), zmin=0, zmax=1
             )
 
+            # log the rounded matrix
             # rounding tells us "are these more same or more different?"
-            similarity_matrix_top_quadrant = similarity_matrix[:num_rows, :num_rows]
             metrics["similarity_matrix_top_quadrant_rounded"] = px.imshow(
-                similarity_matrix_top_quadrant.round().tolist(), zmin=0, zmax=1
+                top_quad_rounded.tolist(), zmin=0, zmax=1
             )
 
             # save embedding pictures so we can make gifs later
