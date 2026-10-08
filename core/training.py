@@ -126,9 +126,11 @@ def train(config: ConfigObject):
         train_loss = total_loss / num_batches
 
         # calculate number of false negatives
-        similarity_matrix_top_quad = loss_function.calculate_similarities(
+        similarity_matrix = loss_function.calculate_similarities(
             saved_embeddings, saved_embeddings
         )
+
+        similarity_matrix_top_quad = similarity_matrix[:num_rows, :num_rows]
 
         top_quad_rounded = similarity_matrix_top_quad.round()
 
