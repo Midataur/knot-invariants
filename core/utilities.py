@@ -292,7 +292,7 @@ def sort_knots(knots: list[Knot]):
 
 def sort_tensor_by_indices(to_sort: torch.Tensor, indices: torch.Tensor):
     """
-        Takes in an n*m tensor and an n*1 tensor of indices.
+        Takes in an n x m tensor and an n x 1 tensor of indices.
         Returns the tensor with the rows sorted by the order of indices.
 
         A roughly equivalent expression for lists
