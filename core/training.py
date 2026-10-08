@@ -99,12 +99,13 @@ def train(config: ConfigObject):
         # (they're shuffled by the dataloader).
         saved_indices = torch.empty((0, 1), device=accelerator.device)
         
-        for first, second, real_indices in tqdm(dataloader, disable=not accelerator.is_local_main_process):
+        for first, second, indices in tqdm(dataloader, disable=not accelerator.is_local_main_process):
             # get rid of the weird third dimension that gets addded for some reason
             num_rows, _, __   = first.shape
             
-            first_codes  = first.reshape((num_rows, -1))
-            second_codes = second.reshape((num_rows, -1))
+            first_codes      = first.reshape((num_rows, -1))
+            second_codes     = second.reshape((num_rows, -1))
+            reshaped_indices = indices.reshape((num_rows, -1))
 
             # zero the gradients
             optimizer.zero_grad()  
@@ -126,7 +127,7 @@ def train(config: ConfigObject):
 
             # save embeddings for later
             saved_embeddings = torch.cat((saved_embeddings, first_embedded))
-            saved_indices = torch.cat((saved_indices, real_indices))
+            saved_indices = torch.cat((saved_indices, reshaped_indices))
 
         train_loss = total_loss / num_batches
 
