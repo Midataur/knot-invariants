@@ -62,10 +62,12 @@ class KnotDataWithTransforms(Dataset):
 
         first_codes  = torch.tensor(first_codes,  dtype=int)
         second_codes = torch.tensor(second_codes, dtype=int)
+        indices      = torch.tensor(idx,          dtype=int).reshape((-1, 1))
 
         return (
             first_codes,
-            second_codes
+            second_codes,
+            indices
         )
     
     def save(self, location):
@@ -154,7 +156,7 @@ def get_dataset_and_loader(config: ConfigObject, verbose=False, exclude_torus=Tr
         dataset, 
         batch_size=batchsize,
         num_workers=n_workers, 
-        shuffle=False,
+        shuffle=True,
     )
 
     return dataset, dataloader

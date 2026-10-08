@@ -1,4 +1,3 @@
-from accelerate import load_checkpoint_and_dispatch
 from collections import defaultdict as dd
 from collections.abc import Iterable
 from accelerate import Accelerator
@@ -68,7 +67,7 @@ def try_loading_state(config: ConfigObject, accelerator: Accelerator):
 
     # try loading the state
     if os.path.isfile(save_directory):
-        model = accelerator.load_state(input_dir=save_directory)
+        accelerator.load_state(input_dir=save_directory)
 
 def format_for_pytorch_geo(to_format, new_shape=None, new_type=torch.float):
     """
@@ -290,3 +289,26 @@ def sort_knots(knots: list[Knot]):
         knots,
         key=lambda x: (len(x.pd_code), x.knot_id) # use knot id for tie breaker
     )
+
+def sort_tensor_by_indices(to_sort: torch.Tensor, indices: torch.Tensor):
+    """
+        Takes in an n*m tensor and an n*1 tensor of indices.
+        Returns the tensor with the rows sorted by the order of indices.
+
+        A roughly equivalent expression for lists
+        is `unzip(sort(zip(indices, to_sort)))[1]`.
+
+        Based on - https://stackoverflow.com/a/73389704.
+        Posted by simplename, modified by community. See post 'Timeline' for change history.
+        Retrieved 2026-10-08, License - CC BY-SA 4.0
+    """
+
+    # make sure indices are the right types
+    indices = indices.to(dtype=to_sort.dtype)
+
+    # append the indices to the last column
+    intermediate = torch.cat((to_sort, indices), dim=1)
+
+    # sort by the last column, then discard the indices
+    new_indices = intermediate[:,-1].sort()[1]
+    return intermediate[new_indices][:,:-1]

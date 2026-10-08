@@ -1,4 +1,4 @@
-from utilities import try_loading_state, save_state_and_config, try_loading_config, SimCLRLoss
+from utilities import try_loading_state, save_state_and_config, try_loading_config, SimCLRLoss, sort_tensor_by_indices
 from torch_datasets import get_dataset_and_loader
 from constants_and_types import ConfigObject, TrainingState
 from accelerate import Accelerator
@@ -95,7 +95,11 @@ def train(config: ConfigObject):
         # keep track of these in a seperate tensor for non-full batch training
         saved_embeddings = torch.empty((0, config.proj_dim), device=accelerator.device)
         
-        for first, second in tqdm(dataloader, disable=not accelerator.is_local_main_process):
+        # keep track of the true sample order so we can sort them again later.
+        # (they're shuffled by the dataloader).
+        saved_indices = torch.empty((0, 1), device=accelerator.device)
+        
+        for first, second, real_indices in tqdm(dataloader, disable=not accelerator.is_local_main_process):
             # get rid of the weird third dimension that gets addded for some reason
             num_rows, _, __   = first.shape
             
@@ -120,10 +124,14 @@ def train(config: ConfigObject):
             total_loss += loss.item()
             num_batches += 1
 
-            # save embeddings
+            # save embeddings for later
             saved_embeddings = torch.cat((saved_embeddings, first_embedded))
+            saved_indices = torch.cat((saved_indices, real_indices))
 
         train_loss = total_loss / num_batches
+
+        # put the saved embeddings back in the correct order
+        saved_embeddings = sort_tensor_by_indices(saved_embeddings, saved_indices)
 
         # calculate number of false negatives
         similarity_matrix = loss_function.calculate_similarities(
