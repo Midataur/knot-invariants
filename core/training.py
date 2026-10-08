@@ -91,6 +91,9 @@ def train(config: ConfigObject):
         num_batches = 0
 
         accelerator.print("Training...")
+
+        # keep track of these in a seperate tensor for non-full batch training
+        saved_embeddings = torch.empty((0, config.proj_dim), device=accelerator.device)
         
         for first, second in tqdm(dataloader, disable=not accelerator.is_local_main_process):
             # get rid of the weird third dimension that gets addded for some reason
@@ -117,15 +120,17 @@ def train(config: ConfigObject):
             total_loss += loss.item()
             num_batches += 1
 
+            # save embeddings
+            saved_embeddings = torch.cat((saved_embeddings, first_embedded))
+
         train_loss = total_loss / num_batches
 
         # calculate number of false negatives
-        similarity_matrix = loss_function.calculate_similarities(
-            first_embedded, second_embedded
+        similarity_matrix_top_quad = loss_function.calculate_similarities(
+            saved_embeddings, saved_embeddings
         )
 
-        similarity_matrix_top_quadrant = similarity_matrix[:num_rows, :num_rows]
-        top_quad_rounded = similarity_matrix_top_quadrant.round()
+        top_quad_rounded = similarity_matrix_top_quad.round()
 
         # we subtract of identities and divide by two.
         # this gives the number of non-zero entries above the diagonal.
@@ -143,7 +148,7 @@ def train(config: ConfigObject):
         if epoch % config.logging_frequency == 0:
             # log the top quadrant
             metrics["similarity_matrix_top_quadrant"] = px.imshow(
-                similarity_matrix_top_quadrant.tolist(), zmin=0, zmax=1
+                similarity_matrix_top_quad.tolist(), zmin=0, zmax=1
             )
 
             # log the rounded matrix
