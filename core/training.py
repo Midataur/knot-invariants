@@ -130,20 +130,20 @@ def train(config: ConfigObject):
             saved_embeddings, saved_embeddings
         )
 
-        similarity_matrix_top_quad = similarity_matrix[:num_rows, :num_rows]
-
+        num_knots = len(dataset)
+        similarity_matrix_top_quad = similarity_matrix[:num_knots, :num_knots]
         top_quad_rounded = similarity_matrix_top_quad.round()
 
         # we subtract of identities and divide by two.
         # this gives the number of non-zero entries above the diagonal.
-        collision_count = (top_quad_rounded.sum() - num_rows)/2
+        collision_count = (top_quad_rounded.sum() - num_knots)/2
 
         metrics = {
             "loss": train_loss,
             "current_lr": scheduler.get_last_lr()[0],
             "tensor_shape": first_embedded.shape,
-            "orthogonal_loss": config.orthogonal_loss(num_rows),
-            "constant_fn_loss": config.constant_fn_loss(num_rows),
+            "orthogonal_loss": config.orthogonal_loss(num_knots),
+            "constant_fn_loss": config.constant_fn_loss(num_knots),
             "collision_count": collision_count
         }
 
