@@ -7,8 +7,8 @@ import mixer
 # set up the mixer
 TRAIN_NO_MORE_THAN = 11 # the maximum number of crossings in the og diagram
 
-n_mix_steps = 4
-max_crossings = TRAIN_NO_MORE_THAN + n_mix_steps*2
+n_mix_steps = 8
+max_crossings = 20
 
 hamiltonian = functools.partial(
     mixer.crossing_hamiltonian_with_cutoff,
@@ -42,7 +42,7 @@ optimiser = functools.partial(
     weight_decay=0.01
 )
 
-MAX_EPOCHS = 14_000
+MAX_EPOCHS = 18_000
 
 scheduler = functools.partial(
     torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
@@ -53,7 +53,7 @@ scheduler = functools.partial(
 # in the custom_types file.
 
 CONFIG = ConfigObject(
-    model_name        = "4-move-no-RL-no-sym-LT11-5",
+    model_name        = "8-move-no-RL-no-sym-LT11-1",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",
