@@ -27,7 +27,7 @@ def train(config: ConfigObject):
     torch.manual_seed(config.random_seed)
     random.seed(config.random_seed)
 
-    # try loading model and config
+    # try loading config
     config = try_loading_config(config)
 
     ModelType = model_types.MODELS[config.model_type]

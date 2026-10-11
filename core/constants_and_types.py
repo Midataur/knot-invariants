@@ -68,6 +68,8 @@ class ConfigObject(NamedTuple):
     proj_dim: int             # the dimension to project down to for the SimCLR loss function.
                               # this shouldn't be bigger than n_embed.
 
+    normalize_outputs: bool   # whether to normalise the outputted embeddings.
+
     # the next few are training parameters
 
     optimizer: any            # the optimiser to use. expects a partial function.

@@ -161,6 +161,10 @@ class BasicTransformer(nn.Module):
         # perform the projection step
         logits = self.projection(x)                                          # (batch, proj_dim)
 
+        # potentially normalise the outputs
+        if self.config.normalize_outputs:
+            logits = torch.nn.functional.normalize(logits, dim=-1)           # (batch, proj_dim)
+
         return logits
 
 MODELS = {
