@@ -80,7 +80,7 @@ CONFIG = ConfigObject(
     optimizer         = optimiser,
     scheduler         = scheduler,
     logging_frequency = 100,
-    batchsize         = 400,
+    batchsize         = 600,
 
     max_epochs        = MAX_EPOCHS,
     n_workers         = 0,
