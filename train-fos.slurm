@@ -55,6 +55,7 @@ module load Python/3.14.2
 # The job command(s):
 source ./venv/bin/activate
 CUDA_LAUNCH_BLOCKING=1 accelerate launch ./core/main.py
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 ##DO NOT ADD/EDIT BEYOND THIS LINE##
 ##Job monitor command to list the resource usage
