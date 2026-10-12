@@ -18,11 +18,16 @@ hamiltonian = functools.partial(
 def pdcf_with_kwargs(pd_code, **kwargs):
     return pd_canonical_form(pd_code)
 
+def random_sym_then_pdcf(pd_code, symmetry_type):
+    return pd_canonical_form(
+        mixer.random_symmetry(pd_code, symmetry_type)
+    )
+
 mixer_to_use = functools.partial(
     mixer.hamiltonian_mixer,
     n_steps=n_mix_steps,
     hamiltonian=hamiltonian,
-    end_step=pdcf_with_kwargs
+    end_step=random_sym_then_pdcf
 )
 
 # set up the train set decider
@@ -53,7 +58,7 @@ scheduler = functools.partial(
 # in the custom_types file.
 
 CONFIG = ConfigObject(
-    model_name        = "8-move-no-RL-no-sym-LT11-5",
+    model_name        = "8-move-no-RL-yes-sym-LT11-1",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",
@@ -67,7 +72,7 @@ CONFIG = ConfigObject(
     n_embed           = 400,
     n_heads           = 20,
     dropout           = 0,
-    n_blocks          = 4,
+    n_blocks          = 3,
     normalize_outputs = True,
 
     proj_dim          = 400,

@@ -369,9 +369,9 @@ def pd_identity(pd_code: list[int]):
 SYMMETRY_GROUP = {
     "Chiral": [pd_identity],
     "Fully amphicheiral": [pd_identity, reverse_knot, mirror_knot, reverse_and_mirror_knot],
-    "Negative amphicheiral": [pd_identity, reverse_and_mirror_knot], # note -K = K* for this class
-    "Positively amphicheiral": [pd_identity, mirror_knot], # note -K = -K* for this class
-    "Reversible": [pd_identity, reverse_knot] # note K* = -K* for this class
+    "Negative amphicheiral": [pd_identity, reverse_and_mirror_knot], # note K = -K* for this class
+    "Positively amphicheiral": [pd_identity, mirror_knot], # note K = K* for this class
+    "Reversible": [pd_identity, reverse_knot] # note K = -K for this class
 }
 
 # for a given symmetry type, tells you the operations needed to create all variants

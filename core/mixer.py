@@ -22,7 +22,7 @@ class MoveData(NamedTuple):
 
     transformation_func: Callable[[list[int]], list[int]]
     num_crossings_after_application: int
-    move_type: str
+    move_type: Literal["twist", "untwist", "poke", "unpoke", "yang-baxter"]
 
 def get_valid_edge_moves(pd_code: list[int], edge_pos: int) -> list[MoveData]:
     """
@@ -209,7 +209,7 @@ def constant_curve(current_step: int, temperature: int):
 
 ### ACTUAL PROCESSES ###
 
-def apply_random_symmetry(pd_code: list[int], symmetry_type: str):
+def random_symmetry(pd_code: list[int], symmetry_type: str):
     """Takes a pd code and a symmetry group and randomly applies something in that group."""
 
     random_symmetry = random.choice(SYMMETRY_GROUP[symmetry_type])
@@ -261,15 +261,6 @@ def rr_accepts_kwargs(pd_code: list[int], max_crossings: int | None = None, **kw
         Exactly the same as random_relabel_and_reorder but it accepts kwargs without throwing an error.
     """
     return random_relabel_and_reorder(pd_code, max_crossings)
-
-def random_symmmetry(pd_code: list[int], symmetry_type: str):
-    """
-        Applies a random valid symmetry to the code.
-    """
-
-    sym_group = SYMMETRY_GROUP[symmetry_type]
-    chosen_sym = random.choice(sym_group)
-    return chosen_sym(pd_code)
 
 def hamiltonian_mixer(
         pd_code: list[int], 
@@ -403,5 +394,41 @@ def curriculum_augmenter(
         for debugging purposes.
     """
 
-    # TODO: implement this properly
+    # get the augmentation counts
+    (
+        label_swaps, 
+        node_swaps, 
+        sym_move, 
+        reidemeister
+    ) = decide_augmentation_counts(training_state)
+
+    # do label swaps
+    for x in range(label_swaps):
+        ...
+
+    # do node swaps
+    for x in range(node_swaps):
+        ...
+
+    # do the symmetry move
+    if sym_move:
+        pd_code = random_symmmetry(pd_code, symmetry_type)
+
+    # do Redemeister moves
+    pd_code = hamiltonian_mixer(
+        pd_code=pd_code,
+        n_steps=reidemeister,
+        symmetry_type=symmetry_type,
+        hamiltonian=hamiltonian,
+        temperature_curve=temperature_curve,
+        end_step=end_step
+    )
+
+    # check code if requested
+    if strict and not pd_code_is_valid(pd_code, verbose=True):
+        raise Exception("Invalid code:", pd_code)
+
+    # TODO: finish this
     raise NotImplementedError()
+
+    return pd_code
