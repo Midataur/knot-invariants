@@ -53,7 +53,7 @@ scheduler = functools.partial(
 # in the custom_types file.
 
 CONFIG = ConfigObject(
-    model_name        = "8-move-no-RL-no-sym-LT11-3",
+    model_name        = "8-move-no-RL-no-sym-LT11-4",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",
@@ -67,7 +67,7 @@ CONFIG = ConfigObject(
     n_embed           = 400,
     n_heads           = 20,
     dropout           = 0,
-    n_blocks          = 3,
+    n_blocks          = 4,
     normalize_outputs = True,
 
     proj_dim          = 400,
