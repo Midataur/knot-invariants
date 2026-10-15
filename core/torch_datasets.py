@@ -151,11 +151,10 @@ def get_dataset_and_loader(config: ConfigObject, verbose=False, exclude_torus=Tr
         )
     )
 
-    batchsize, n_workers = config.batchsize, config.n_workers
     dataloader = DataLoader(
         dataset, 
-        batch_size=batchsize,
-        num_workers=n_workers, 
+        batch_size=config.batchsize,
+        num_workers=config.n_workers, 
         shuffle=True,
     )
 

@@ -87,9 +87,8 @@ class ConfigObject(NamedTuple):
  
     # the next few are parameters with default values
 
-    n_workers: int = 0        # number of workers to use for loading data to the gpus.
-                              # set to 0 for "use all", +ve for a specific count.
-                              # usually set to 0.
+    n_workers: int = 0        # how many subprocesses to use for data loading. 
+                              # 0 means that the data will be loaded in the main process.
 
     max_epochs: int | None = None
                               # the maximum number of epochs to train for.
