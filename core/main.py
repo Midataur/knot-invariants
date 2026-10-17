@@ -58,7 +58,7 @@ scheduler = functools.partial(
 # in the custom_types file.
 
 CONFIG = ConfigObject(
-    model_name        = "16-move-no-RL-no-sym-LT11-1",
+    model_name        = "16-move-no-RL-no-sym-LT11-2",
     model_type        = "BasicTransformer",
     raw_db_filename   = "katlas.rdf",
     data_url          = "http://katlas.org/Data/katlas.rdf.gz",
@@ -69,13 +69,13 @@ CONFIG = ConfigObject(
     extra_notes       = f"Only training on knots with at most {TRAIN_NO_MORE_THAN} crossings.",
 
     get_train_set     = get_train_set,
-    n_embed           = 400,
+    n_embed           = 600,
     n_heads           = 20,
     dropout           = 0,
     n_blocks          = 3,
     normalize_outputs = True,
 
-    proj_dim          = 400,
+    proj_dim          = 600,
 
     max_crossings     = max_crossings,
     n_mix_steps       = n_mix_steps,
@@ -88,7 +88,7 @@ CONFIG = ConfigObject(
     batchsize         = 400,
 
     max_epochs        = MAX_EPOCHS,
-    n_workers         = 16,
+    n_workers         = 12,
     PATH              = "."
 )
 
